@@ -114,10 +114,10 @@ func (output *FirehoseOutput) sendCurrentBatch() error {
 		Records:            output.records,
 	})
 	if err != nil {
-		logrus.Error(err)
+		logrus.Errorf("[firehose] %v", err)
 		return err
 	}
-	logrus.Debugf("Sent %d events to Firehose\n", len(output.records))
+	logrus.Debugf("[firehose] Sent %d events to Firehose\n", len(output.records))
 	output.processAPIResponse(response)
 
 	return nil
@@ -125,12 +125,12 @@ func (output *FirehoseOutput) sendCurrentBatch() error {
 
 func (output *FirehoseOutput) processAPIResponse(response *firehose.PutRecordBatchOutput) {
 	if aws.Int64Value(response.FailedPutCount) > 0 {
-		logrus.Errorf("%d records failed to be delivered\n", aws.Int64Value(response.FailedPutCount))
+		logrus.Errorf("[firehose] %d records failed to be delivered\n", aws.Int64Value(response.FailedPutCount))
 		failedRecords := make([]*firehose.Record, 0, aws.Int64Value(response.FailedPutCount))
 		// try to resend failed records
 		for i, record := range response.RequestResponses {
 			if record.ErrorMessage != nil {
-				logrus.Debugf("Record failed to send with error: %s\n", aws.StringValue(record.ErrorMessage))
+				logrus.Debugf("[firehose] Record failed to send with error: %s\n", aws.StringValue(record.ErrorMessage))
 				failedRecords = append(failedRecords, output.records[i])
 			}
 		}

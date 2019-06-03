@@ -76,7 +76,7 @@ func DataKeys(input string, record map[interface{}]interface{}) map[interface{}]
 		case string:
 			currentKey = t
 		default:
-			logrus.Debugf("firehose: Unable to determine type of key %v\n", t)
+			logrus.Debugf("[external plugin]: Unable to determine type of key %v\n", t)
 			continue
 		}
 

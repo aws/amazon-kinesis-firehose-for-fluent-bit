@@ -15,7 +15,6 @@ package main
 
 import (
 	"C"
-	"fmt"
 	"unsafe"
 
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose"
@@ -41,13 +40,13 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	plugins.SetupLogger()
 
 	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery-stream")
-	logrus.Infof("[firehose] plugin parameter = '%s'\n", deliveryStream)
+	logrus.Infof("[firehose] plugin parameter delivery-stream = '%s'\n", deliveryStream)
 	region := output.FLBPluginConfigKey(ctx, "region")
-	logrus.Infof("[firehose] plugin parameter = '%s'\n", region)
+	logrus.Infof("[firehose] plugin parameter region = '%s'\n", region)
 	dataKeys := output.FLBPluginConfigKey(ctx, "data_keys")
-	logrus.Infof("[firehose] plugin parameter = '%s'\n", dataKeys)
+	logrus.Infof("[firehose] plugin parameter data_keys = '%s'\n", dataKeys)
 	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
-	logrus.Infof("[firehose] plugin parameter = '%s'\n", roleARN)
+	logrus.Infof("[firehose] plugin parameter role_arn = '%s'\n", roleARN)
 
 	if deliveryStream == "" || region == "" {
 		return output.FLB_ERROR
@@ -56,7 +55,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	var err error
 	out, err = firehose.NewFirehoseOutput(region, deliveryStream, dataKeys, roleARN)
 	if err != nil {
-		logrus.Debugf("firehose: Failed to initialize plugin: %v\n", err)
+		logrus.Debugf("[firehose] Failed to initialize plugin: %v\n", err)
 		return output.FLB_ERROR
 	}
 	return output.FLB_OK
@@ -72,7 +71,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	dec := output.NewDecoder(data, int(length))
 
 	fluentTag := C.GoString(tag)
-	logrus.Debugf("firehose: Found logs with tag: %s\n", fluentTag)
+	logrus.Debugf("[firehose] Found logs with tag: %s\n", fluentTag)
 
 	for {
 		// Extract Record
@@ -91,7 +90,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	if err != nil {
 		return output.FLB_ERROR
 	}
-	fmt.Printf("Processed %d events with tag %s\n", count, fluentTag)
+	logrus.Debugf("[firehose] Processed %d events with tag %s\n", count, fluentTag)
 
 	return output.FLB_OK
 }
