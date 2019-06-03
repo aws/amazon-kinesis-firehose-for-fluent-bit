@@ -17,13 +17,13 @@ import (
 	"C"
 )
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -117,7 +117,7 @@ func (output *FirehoseOutput) sendCurrentBatch() error {
 		logrus.Error(err)
 		return err
 	}
-	Logrus.Debugf("Sent %d events to Firehose\n", len(output.records))
+	logrus.Debugf("Sent %d events to Firehose\n", len(output.records))
 	output.processAPIResponse(response)
 
 	return nil

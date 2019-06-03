@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 const fluentBitLogLevelEnvVar = "FLB_LOG_LEVEL"

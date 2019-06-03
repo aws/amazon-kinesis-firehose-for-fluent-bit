@@ -19,9 +19,10 @@ import (
 	"unsafe"
 
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose"
+	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	"github.com/fluent/fluent-bit-go/output"
 )
-import "github.com/Sirupsen/logrus"
+import "github.com/sirupsen/logrus"
 
 var (
 	out *firehose.FirehoseOutput
