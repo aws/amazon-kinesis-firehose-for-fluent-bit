@@ -16,9 +16,27 @@
 package plugins
 
 import (
-	"fmt"
+	"os"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
 )
+
+const fluentBitLogLevelEnvVar = "FLB_LOG_LEVEL"
+
+func SetupLogger() {
+	logrus.SetOutput(os.Stdout)
+	switch strings.ToUpper(os.Getenv(fluentBitLogLevelEnvVar)) {
+	default:
+		logrus.SetLevel(logrus.InfoLevel)
+	case "DEBUG":
+		logrus.SetLevel(logrus.DebugLevel)
+	case "INFO":
+		logrus.SetLevel(logrus.InfoLevel)
+	case "ERROR":
+		logrus.SetLevel(logrus.ErrorLevel)
+	}
+}
 
 // []byte will be base64 encoded when marshaled to JSON, so we must directly cast all []byte to string
 func DecodeMap(record map[interface{}]interface{}) (map[interface{}]interface{}, error) {
@@ -58,7 +76,7 @@ func DataKeys(input string, record map[interface{}]interface{}) map[interface{}]
 		case string:
 			currentKey = t
 		default:
-			fmt.Printf("Unable to determine type of key %v\n", t)
+			logrus.Debugf("firehose: Unable to determine type of key %v\n", t)
 			continue
 		}
 

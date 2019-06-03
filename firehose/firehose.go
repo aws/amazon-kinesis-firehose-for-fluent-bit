@@ -17,8 +17,7 @@ import (
 	"C"
 )
 import (
-	"fmt"
-
+	"github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -39,7 +38,7 @@ type FirehoseOutput struct {
 	region         string
 	deliveryStream string
 	dataKeys       string
-	client         *firehose.Firehose
+	client         FirehoseClient
 	records        []*firehose.Record
 }
 
@@ -64,7 +63,7 @@ func NewFirehoseOutput(region string, deliveryStream string, dataKeys string, ro
 	}, nil
 }
 
-func firehoseClient(roleARN string, sess *session.Session) *firehose.Firehose {
+func firehoseClient(roleARN string, sess *session.Session) FirehoseClient {
 	if roleARN != "" {
 		creds := stscreds.NewCredentials(sess, roleARN)
 		return firehose.New(sess, &aws.Config{Credentials: creds})
@@ -92,7 +91,6 @@ func (output *FirehoseOutput) AddRecord(record map[interface{}]interface{}) erro
 	if err != nil {
 		return err
 	}
-	fmt.Printf("JSON: %v\n", string(data))
 	if len(output.records) == maximumRecordsPerPut {
 		err = output.sendCurrentBatch()
 		if err != nil {
@@ -111,16 +109,15 @@ func (output *FirehoseOutput) Flush() error {
 }
 
 func (output *FirehoseOutput) sendCurrentBatch() error {
-	fmt.Println("Sending to Firehose")
 	response, err := output.client.PutRecordBatch(&firehose.PutRecordBatchInput{
 		DeliveryStreamName: aws.String(output.deliveryStream),
 		Records:            output.records,
 	})
 	if err != nil {
-		fmt.Println(err)
+		logrus.Error(err)
 		return err
 	}
-	fmt.Printf("Sent %d events to Firehose\n", len(output.records))
+	Logrus.Debugf("Sent %d events to Firehose\n", len(output.records))
 	output.processAPIResponse(response)
 
 	return nil
@@ -128,12 +125,12 @@ func (output *FirehoseOutput) sendCurrentBatch() error {
 
 func (output *FirehoseOutput) processAPIResponse(response *firehose.PutRecordBatchOutput) {
 	if aws.Int64Value(response.FailedPutCount) > 0 {
-		fmt.Printf("%d records failed to be delivered\n", aws.Int64Value(response.FailedPutCount))
+		logrus.Errorf("%d records failed to be delivered\n", aws.Int64Value(response.FailedPutCount))
 		failedRecords := make([]*firehose.Record, 0, aws.Int64Value(response.FailedPutCount))
 		// try to resend failed records
 		for i, record := range response.RequestResponses {
 			if record.ErrorMessage != nil {
-				fmt.Printf("Record failed to send: %s\n", aws.StringValue(record.ErrorMessage))
+				logrus.Debugf("Record failed to send with error: %s\n", aws.StringValue(record.ErrorMessage))
 				failedRecords = append(failedRecords, output.records[i])
 			}
 		}

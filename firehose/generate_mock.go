@@ -13,4 +13,4 @@
 
 package firehose
 
-//go:generate mockgen.sh github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit FirehoseClient mock/mock.go
+//go:generate mockgen.sh github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose FirehoseClient mock_firehose/mock.go

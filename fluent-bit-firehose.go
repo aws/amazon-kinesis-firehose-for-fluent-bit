@@ -21,29 +21,32 @@ import (
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose"
 	"github.com/fluent/fluent-bit-go/output"
 )
+import "github.com/Sirupsen/logrus"
 
 var (
 	out *firehose.FirehoseOutput
 )
 
+// The "export" comments have syntactic meaning
+// This is how the compiler knows a function should be callable from the C code
+
 //export FLBPluginRegister
 func FLBPluginRegister(ctx unsafe.Pointer) int {
-	return output.FLBPluginRegister(ctx, "firehose", "Amazon Kinesis Firehose Fluent Bit Plugin!")
+	return output.FLBPluginRegister(ctx, "firehose", "Amazon Kinesis Data Firehose Fluent Bit Plugin.")
 }
-
-// (fluentbit will call this)
-// ctx (context) pointer to fluentbit context (state/ c code)
 
 //export FLBPluginInit
 func FLBPluginInit(ctx unsafe.Pointer) int {
+	plugins.SetupLogger()
+
 	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery-stream")
-	fmt.Printf("[firehose] plugin parameter = '%s'\n", deliveryStream)
+	logrus.Infof("[firehose] plugin parameter = '%s'\n", deliveryStream)
 	region := output.FLBPluginConfigKey(ctx, "region")
-	fmt.Printf("[firehose] plugin parameter = '%s'\n", region)
+	logrus.Infof("[firehose] plugin parameter = '%s'\n", region)
 	dataKeys := output.FLBPluginConfigKey(ctx, "data_keys")
-	fmt.Printf("[firehose] plugin parameter = '%s'\n", dataKeys)
+	logrus.Infof("[firehose] plugin parameter = '%s'\n", dataKeys)
 	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
-	fmt.Printf("[firehose] plugin parameter = '%s'\n", roleARN)
+	logrus.Infof("[firehose] plugin parameter = '%s'\n", roleARN)
 
 	if deliveryStream == "" || region == "" {
 		return output.FLB_ERROR
@@ -52,7 +55,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	var err error
 	out, err = firehose.NewFirehoseOutput(region, deliveryStream, dataKeys, roleARN)
 	if err != nil {
-		fmt.Println(err)
+		logrus.Debugf("firehose: Failed to initialize plugin: %v\n", err)
 		return output.FLB_ERROR
 	}
 	return output.FLB_OK
@@ -68,7 +71,7 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	dec := output.NewDecoder(data, int(length))
 
 	fluentTag := C.GoString(tag)
-	fmt.Printf("Found tag: %s\n", fluentTag)
+	logrus.Debugf("firehose: Found logs with tag: %s\n", fluentTag)
 
 	for {
 		// Extract Record
@@ -79,26 +82,16 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 
 		err := out.AddRecord(record)
 		if err != nil {
-			fmt.Println(err)
-			// TODO: Better error handling
-			return output.FLB_RETRY
+			return output.FLB_ERROR
 		}
 		count++
 	}
-	// Should we flush only FLBPluginExit? That would be more efficient but more risky
 	err := out.Flush()
 	if err != nil {
-		fmt.Println(err)
-		// TODO: Better error handling
-		return output.FLB_RETRY
+		return output.FLB_ERROR
 	}
 	fmt.Printf("Processed %d events with tag %s\n", count, fluentTag)
 
-	// Return options:
-	//
-	// output.FLB_OK    = data have been processed.
-	// output.FLB_ERROR = unrecoverable error, do not try this again.
-	// output.FLB_RETRY = retry to flush later.
 	return output.FLB_OK
 }
 
