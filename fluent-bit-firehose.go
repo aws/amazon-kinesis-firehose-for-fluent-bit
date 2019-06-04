@@ -20,11 +20,12 @@ import (
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	"github.com/fluent/fluent-bit-go/output"
+
+	"github.com/sirupsen/logrus"
 )
-import "github.com/sirupsen/logrus"
 
 var (
-	out *firehose.FirehoseOutput
+	firehoseOutput *firehose.OutputPlugin
 )
 
 // The "export" comments have syntactic meaning
@@ -53,7 +54,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	}
 
 	var err error
-	out, err = firehose.NewFirehoseOutput(region, deliveryStream, dataKeys, roleARN)
+	firehoseOutput, err = firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN)
 	if err != nil {
 		logrus.Debugf("[firehose] Failed to initialize plugin: %v\n", err)
 		return output.FLB_ERROR
@@ -80,13 +81,13 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			break
 		}
 
-		err := out.AddRecord(record)
+		retCode, err := firehoseOutput.AddRecord(record)
 		if err != nil {
-			return output.FLB_ERROR
+			return retCode
 		}
 		count++
 	}
-	err := out.Flush()
+	err := firehoseOutput.Flush()
 	if err != nil {
 		return output.FLB_ERROR
 	}

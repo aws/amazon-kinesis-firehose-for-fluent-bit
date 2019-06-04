@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/aws/aws-sdk-go v1.19.41
+	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/fluent/fluent-bit-go v0.0.0-20190521122216-fc386d263885
 	github.com/golang/mock v1.3.1
 	github.com/json-iterator/go v1.1.6

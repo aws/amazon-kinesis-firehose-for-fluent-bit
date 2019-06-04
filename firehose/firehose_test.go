@@ -47,7 +47,7 @@ func TestAddRecordAndFlush(t *testing.T) {
 	}
 
 	ctrl := gomock.NewController(t)
-	mockFirehose := mock_firehose.NewMockFirehoseClient(ctrl)
+	mockFirehose := mock_firehose.NewMockPutRecordBatcher(ctrl)
 
 	mockFirehose.EXPECT().PutRecordBatch(gomock.Any()).Return(&firehose.PutRecordBatchOutput{
 		FailedPutCount: aws.Int64(0),

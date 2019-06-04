@@ -11,38 +11,48 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
+// Package firehose containers the OutputPlugin which sends log records to Firehose
 package firehose
 
 import (
-	"C"
-)
-import (
+	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
+	fluentbit "github.com/fluent/fluent-bit-go/output"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	maximumRecordsPerPut = 500
+	// Firehose API Limit https://docs.aws.amazon.com/firehose/latest/dev/limits.html
+	maximumRecordsPerPut      = 500
+	maximumPutRecordBatchSize = 4194304 // 4 MiB
+	maximumRecordSize         = 1024000 // 1000 KiB
 )
 
-type FirehoseClient interface {
+// PutRecordBatcher contains the firehose PutRecordBatch method call
+type PutRecordBatcher interface {
 	PutRecordBatch(input *firehose.PutRecordBatchInput) (*firehose.PutRecordBatchOutput, error)
 }
 
-type FirehoseOutput struct {
+// OutputPlugin sends log records to firehose
+type OutputPlugin struct {
 	region         string
 	deliveryStream string
 	dataKeys       string
-	client         FirehoseClient
+	client         PutRecordBatcher
 	records        []*firehose.Record
+	dataLength     int
+	backoff        *plugins.Backoff
 }
 
-func NewFirehoseOutput(region string, deliveryStream string, dataKeys string, roleARN string) (*FirehoseOutput, error) {
+// NewOutputPlugin creates a OutputPlugin object
+func NewOutputPlugin(region string, deliveryStream string, dataKeys string, roleARN string) (*OutputPlugin, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(region),
 	})
@@ -50,20 +60,21 @@ func NewFirehoseOutput(region string, deliveryStream string, dataKeys string, ro
 		return nil, err
 	}
 
-	client := firehoseClient(roleARN, sess)
+	client := newPutRecordBatcher(roleARN, sess)
 
 	records := make([]*firehose.Record, 0, 500)
 
-	return &FirehoseOutput{
+	return &OutputPlugin{
 		region:         region,
 		deliveryStream: deliveryStream,
 		client:         client,
 		records:        records,
 		dataKeys:       dataKeys,
+		backoff:        plugins.NewBackoff(),
 	}, nil
 }
 
-func firehoseClient(roleARN string, sess *session.Session) FirehoseClient {
+func newPutRecordBatcher(roleARN string, sess *session.Session) PutRecordBatcher {
 	if roleARN != "" {
 		creds := stscreds.NewCredentials(sess, roleARN)
 		return firehose.New(sess, &aws.Config{Credentials: creds})
@@ -72,10 +83,35 @@ func firehoseClient(roleARN string, sess *session.Session) FirehoseClient {
 	return firehose.New(sess)
 }
 
-// TODO: May be should re-write this to handle errors more carefully
-// may be discard records that can't be marshaled?
-// TODO: Look at how fluentd kinesis plugin does things
-func (output *FirehoseOutput) AddRecord(record map[interface{}]interface{}) error {
+// AddRecord accepts a record and adds it to the buffer, flushing the buffer if it is full
+func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}) (int, error) {
+	data, retCode, err := output.processRecord(record)
+	if err != nil {
+		return retCode, err
+	}
+
+	newDataSize := len(data)
+
+	if len(output.records) == maximumRecordsPerPut || (output.dataLength+newDataSize) > maximumPutRecordBatchSize {
+		err = output.sendCurrentBatch()
+		if err != nil {
+			return fluentbit.FLB_RETRY, err
+		}
+	}
+
+	output.records = append(output.records, &firehose.Record{
+		Data: data,
+	})
+	output.dataLength += newDataSize
+	return fluentbit.FLB_RETRY, nil
+}
+
+// Flush sends the current buffer of records
+func (output *OutputPlugin) Flush() error {
+	return output.sendCurrentBatch()
+}
+
+func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([]byte, int, error) {
 	if output.dataKeys != "" {
 		record = plugins.DataKeys(output.dataKeys, record)
 	}
@@ -83,38 +119,40 @@ func (output *FirehoseOutput) AddRecord(record map[interface{}]interface{}) erro
 	var err error
 	record, err = plugins.DecodeMap(record)
 	if err != nil {
-		return err
+		logrus.Debugf("[firehose] Failed to decode record: %v\n", record)
+		return nil, fluentbit.FLB_ERROR, err
 	}
 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	data, err := json.Marshal(record)
 	if err != nil {
-		return err
-	}
-	if len(output.records) == maximumRecordsPerPut {
-		err = output.sendCurrentBatch()
-		if err != nil {
-			return err
-		}
+		logrus.Debugf("[firehose] Failed to marshal record: %v\n", record)
+		return nil, fluentbit.FLB_ERROR, err
 	}
 
-	output.records = append(output.records, &firehose.Record{
-		Data: data,
-	})
-	return nil
+	if len(data) > maximumRecordSize {
+		logrus.Errorf("[firehose] Discarding log record that is greater than %d bytes", maximumRecordSize)
+		return nil, fluentbit.FLB_ERROR, fmt.Errorf("Log record greater than max size allowed by Kinesis")
+	}
+
+	return data, fluentbit.FLB_OK, nil
 }
 
-func (output *FirehoseOutput) Flush() error {
-	return output.sendCurrentBatch()
-}
+func (output *OutputPlugin) sendCurrentBatch() error {
+	output.backoff.Wait()
 
-func (output *FirehoseOutput) sendCurrentBatch() error {
 	response, err := output.client.PutRecordBatch(&firehose.PutRecordBatchInput{
 		DeliveryStreamName: aws.String(output.deliveryStream),
 		Records:            output.records,
 	})
 	if err != nil {
-		logrus.Errorf("[firehose] %v", err)
+		logrus.Errorf("[firehose] PutRecordBatch failed with %v", err)
+		if aerr, ok := err.(awserr.Error); ok {
+			if aerr.Code() == firehose.ErrCodeServiceUnavailableException {
+				logrus.Warn("[firehose] Throughput limits for the delivery stream may have been exceeded.")
+				output.backoff.StartBackoff()
+			}
+		}
 		return err
 	}
 	logrus.Debugf("[firehose] Sent %d events to Firehose\n", len(output.records))
@@ -123,7 +161,7 @@ func (output *FirehoseOutput) sendCurrentBatch() error {
 	return nil
 }
 
-func (output *FirehoseOutput) processAPIResponse(response *firehose.PutRecordBatchOutput) {
+func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatchOutput) {
 	if aws.Int64Value(response.FailedPutCount) > 0 {
 		logrus.Errorf("[firehose] %d records failed to be delivered\n", aws.Int64Value(response.FailedPutCount))
 		failedRecords := make([]*firehose.Record, 0, aws.Int64Value(response.FailedPutCount))
@@ -137,9 +175,16 @@ func (output *FirehoseOutput) processAPIResponse(response *firehose.PutRecordBat
 
 		output.records = output.records[:0]
 		output.records = append(output.records, failedRecords...)
+		output.dataLength = 0
+		for _, record := range output.records {
+			output.dataLength += len(record.Data)
+		}
 
 	} else {
+		// request fully succeeded
+		output.backoff.Reset()
 		output.records = output.records[:0]
+		output.dataLength = 0
 	}
 
 }

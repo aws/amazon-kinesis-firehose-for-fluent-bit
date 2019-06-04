@@ -18,12 +18,61 @@ package plugins
 import (
 	"os"
 	"strings"
+	"time"
 
+	retry "github.com/cenkalti/backoff"
 	"github.com/sirupsen/logrus"
 )
 
 const fluentBitLogLevelEnvVar = "FLB_LOG_LEVEL"
 
+const (
+	initialInterval = 100 // milliseconds
+	maxInterval     = 10  // seconds
+)
+
+// Backoff wraps github.com/cenkalti/backoff
+// Wait() is called for each AWS API call that may need back off
+// But backoff only occurs if StartBackoff() has previously been called
+// Reset() should be called whenever backoff can end.
+type Backoff struct {
+	doBackoff  bool
+	expBackoff *retry.ExponentialBackOff
+}
+
+// Reset ends the exponential backoff
+func (b *Backoff) Reset() {
+	b.doBackoff = false
+	b.expBackoff.Reset()
+}
+
+// Wait enacts the exponential backoff, if StartBackoff() has been called
+func (b *Backoff) Wait() {
+	if b.doBackoff {
+		d := b.expBackoff.NextBackOff()
+		logrus.Debugf("[firehose] In exponential backoff, waiting %v", d)
+		time.Sleep(d)
+	}
+}
+
+// StartBackoff begins exponential backoff
+func (b *Backoff) StartBackoff() {
+	b.doBackoff = true
+}
+
+// NewBackoff creates a new Backoff struct with default values
+func NewBackoff() *Backoff {
+	b := retry.NewExponentialBackOff()
+	b.InitialInterval = initialInterval * time.Millisecond
+	b.MaxElapsedTime = 0 // The backoff object never expires
+	b.MaxInterval = maxInterval * time.Second
+	return &Backoff{
+		doBackoff:  false,
+		expBackoff: b,
+	}
+}
+
+// SetupLogger sets up Logrus with the log level determined by the Fluent Bit Env Var
 func SetupLogger() {
 	logrus.SetOutput(os.Stdout)
 	switch strings.ToUpper(os.Getenv(fluentBitLogLevelEnvVar)) {
@@ -38,7 +87,8 @@ func SetupLogger() {
 	}
 }
 
-// []byte will be base64 encoded when marshaled to JSON, so we must directly cast all []byte to string
+// DecodeMap prepares a record for JSON marshalling
+// Any []byte will be base64 encoded when marshaled to JSON, so we must directly cast all []byte to string
 func DecodeMap(record map[interface{}]interface{}) (map[interface{}]interface{}, error) {
 	for k, v := range record {
 		switch t := v.(type) {
