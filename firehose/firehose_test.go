@@ -14,22 +14,33 @@
 package firehose
 
 import (
+	"os"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose/mock_firehose"
+	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	"github.com/golang/mock/gomock"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddRecord(t *testing.T) {
-	output := FirehoseOutput{
+	timer, _ := plugins.NewTimeout(func(d time.Duration) {
+		logrus.Errorf("[firehose] timeout threshold reached: Failed to send logs for %v\n", d)
+		logrus.Error("[firehose] Quitting Fluent Bit")
+		os.Exit(1)
+	})
+	output := OutputPlugin{
 		region:         "us-east-1",
 		deliveryStream: "stream",
 		dataKeys:       "",
 		client:         nil,
 		records:        make([]*firehose.Record, 0, 500),
+		backoff:        plugins.NewBackoff(),
+		timer:          timer,
 	}
 
 	record := map[interface{}]interface{}{
@@ -53,12 +64,20 @@ func TestAddRecordAndFlush(t *testing.T) {
 		FailedPutCount: aws.Int64(0),
 	}, nil)
 
-	output := FirehoseOutput{
+	timer, _ := plugins.NewTimeout(func(d time.Duration) {
+		logrus.Errorf("[firehose] timeout threshold reached: Failed to send logs for %v\n", d)
+		logrus.Error("[firehose] Quitting Fluent Bit")
+		os.Exit(1)
+	})
+
+	output := OutputPlugin{
 		region:         "us-east-1",
 		deliveryStream: "stream",
 		dataKeys:       "",
 		client:         mockFirehose,
 		records:        make([]*firehose.Record, 0, 500),
+		backoff:        plugins.NewBackoff(),
+		timer:          timer,
 	}
 
 	output.AddRecord(record)

@@ -24,7 +24,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const fluentBitLogLevelEnvVar = "FLB_LOG_LEVEL"
+const (
+	fluentBitLogLevelEnvVar  = "FLB_LOG_LEVEL"
+	sendFailureTimeoutEnvVar = "SEND_FAILURE_TIMEOUT"
+)
 
 const (
 	initialInterval = 100 // milliseconds
@@ -70,6 +73,65 @@ func NewBackoff() *Backoff {
 		doBackoff:  false,
 		expBackoff: b,
 	}
+}
+
+// Timeout is a simple timeout for single-threaded programming
+// (Goroutines are expensive in Cgo)
+type Timeout struct {
+	timeoutFunc func(time.Duration)
+	duration    time.Duration
+	stopTime    time.Time
+	ticking     bool
+	enabled     bool
+}
+
+// Start the timer
+// this method has no effect if the timer has already been started
+func (t *Timeout) Start() {
+	if t.enabled && !t.ticking {
+		t.ticking = true
+		t.stopTime = time.Now().Add(t.duration)
+	}
+}
+
+// Reset the timer
+func (t *Timeout) Reset() {
+	t.ticking = false
+}
+
+// Check the timer to see if its timed out
+func (t *Timeout) Check() {
+	if t.enabled && t.ticking {
+		if t.stopTime.Before(time.Now()) {
+			// run the timeout function
+			t.timeoutFunc(t.duration)
+		}
+	}
+}
+
+// NewTimeout returns a new timeout object
+// with a duration set from the env var
+// if the env var is not set, then a timer is returned that is disabled (it doesn't do anything)
+func NewTimeout(timeoutFunc func(duration time.Duration)) (*Timeout, error) {
+	if os.Getenv(sendFailureTimeoutEnvVar) != "" {
+		duration, err := time.ParseDuration(os.Getenv(sendFailureTimeoutEnvVar))
+		if err != nil {
+			return nil, err
+		}
+		return &Timeout{
+			timeoutFunc: timeoutFunc,
+			duration:    duration,
+			ticking:     false,
+			enabled:     true,
+		}, nil
+	}
+
+	// timeout not enabled
+	return &Timeout{
+		timeoutFunc: timeoutFunc,
+		ticking:     false,
+		enabled:     false,
+	}, nil
 }
 
 // SetupLogger sets up Logrus with the log level determined by the Fluent Bit Env Var
