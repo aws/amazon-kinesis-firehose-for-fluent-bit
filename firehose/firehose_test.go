@@ -22,6 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose/mock_firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
+	fluentbit "github.com/fluent/fluent-bit-go/output"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -47,8 +48,9 @@ func TestAddRecord(t *testing.T) {
 		"somekey": []byte("some value"),
 	}
 
-	output.AddRecord(record)
+	retCode := output.AddRecord(record)
 
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
 }
 
@@ -80,7 +82,10 @@ func TestAddRecordAndFlush(t *testing.T) {
 		timer:          timer,
 	}
 
-	output.AddRecord(record)
-	output.Flush()
+	retCode := output.AddRecord(record)
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+
+	err := output.Flush()
+	assert.NoError(t, err, "Unexpected error calling flush")
 
 }

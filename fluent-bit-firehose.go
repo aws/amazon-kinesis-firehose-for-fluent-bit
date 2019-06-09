@@ -40,8 +40,8 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	plugins.SetupLogger()
 
-	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery-stream")
-	logrus.Infof("[firehose] plugin parameter delivery-stream = '%s'\n", deliveryStream)
+	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery_stream")
+	logrus.Infof("[firehose] plugin parameter delivery_stream = '%s'\n", deliveryStream)
 	region := output.FLBPluginConfigKey(ctx, "region")
 	logrus.Infof("[firehose] plugin parameter region = '%s'\n", region)
 	dataKeys := output.FLBPluginConfigKey(ctx, "data_keys")
@@ -50,13 +50,14 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	logrus.Infof("[firehose] plugin parameter role_arn = '%s'\n", roleARN)
 
 	if deliveryStream == "" || region == "" {
+		logrus.Error("[firehose] delivery_stream and region are required configuration parameters")
 		return output.FLB_ERROR
 	}
 
 	var err error
 	firehoseOutput, err = firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN)
 	if err != nil {
-		logrus.Debugf("[firehose] Failed to initialize plugin: %v\n", err)
+		logrus.Errorf("[firehose] Failed to initialize plugin: %v\n", err)
 		return output.FLB_ERROR
 	}
 	return output.FLB_OK
@@ -81,14 +82,15 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 			break
 		}
 
-		retCode, err := firehoseOutput.AddRecord(record)
-		if err != nil {
+		retCode := firehoseOutput.AddRecord(record)
+		if retCode != output.FLB_OK {
 			return retCode
 		}
 		count++
 	}
 	err := firehoseOutput.Flush()
 	if err != nil {
+		logrus.Errorf("[firehose] %v\n", err)
 		return output.FLB_ERROR
 	}
 	logrus.Debugf("[firehose] Processed %d events with tag %s\n", count, fluentTag)

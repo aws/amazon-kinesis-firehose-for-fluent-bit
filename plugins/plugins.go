@@ -30,8 +30,8 @@ const (
 )
 
 const (
-	initialInterval = 100 // milliseconds
-	maxInterval     = 10  // seconds
+	initialInterval = 100 * time.Millisecond
+	maxInterval     = 10 * time.Second
 )
 
 // Backoff wraps github.com/cenkalti/backoff
@@ -53,12 +53,13 @@ func (b *Backoff) Reset() {
 func (b *Backoff) Wait() {
 	if b.doBackoff {
 		d := b.expBackoff.NextBackOff()
-		logrus.Debugf("[firehose] In exponential backoff, waiting %v", d)
+		logrus.Debugf("[go plugin] In exponential backoff, waiting %v", d)
 		time.Sleep(d)
 	}
 }
 
 // StartBackoff begins exponential backoff
+// its a no-op if backoff has already started
 func (b *Backoff) StartBackoff() {
 	b.doBackoff = true
 }
@@ -66,9 +67,9 @@ func (b *Backoff) StartBackoff() {
 // NewBackoff creates a new Backoff struct with default values
 func NewBackoff() *Backoff {
 	b := retry.NewExponentialBackOff()
-	b.InitialInterval = initialInterval * time.Millisecond
+	b.InitialInterval = initialInterval
 	b.MaxElapsedTime = 0 // The backoff object never expires
-	b.MaxInterval = maxInterval * time.Second
+	b.MaxInterval = maxInterval
 	return &Backoff{
 		doBackoff:  false,
 		expBackoff: b,
@@ -188,7 +189,7 @@ func DataKeys(input string, record map[interface{}]interface{}) map[interface{}]
 		case string:
 			currentKey = t
 		default:
-			logrus.Debugf("[external plugin]: Unable to determine type of key %v\n", t)
+			logrus.Debugf("[go plugin]: Unable to determine type of key %v\n", t)
 			continue
 		}
 
