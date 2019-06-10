@@ -98,6 +98,8 @@ func newPutRecordBatcher(roleARN string, sess *session.Session) *firehose.Fireho
 }
 
 // AddRecord accepts a record and adds it to the buffer, flushing the buffer if it is full
+// the return value is one of: FLB_OK FLB_RETRY
+// API Errors lead to an FLB_RETRY, and all other errors are logged, the record is discarded and FLB_OK is returned
 func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}) int {
 	data, err := output.processRecord(record)
 	if err != nil {
@@ -177,16 +179,18 @@ func (output *OutputPlugin) sendCurrentBatch() error {
 		return err
 	}
 	logrus.Debugf("[firehose] Sent %d events to Firehose\n", len(output.records))
-	output.processAPIResponse(response)
 
-	return nil
+	return output.processAPIResponse(response)
 }
 
-func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatchOutput) {
+// processAPIResponse processes the successful and failed records
+// it returns an error iff no records succeeded (i.e.) no progress has been made
+func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatchOutput) error {
 	if aws.Int64Value(response.FailedPutCount) > 0 {
 		// start timer if all records failed (no progress has been made)
 		if aws.Int64Value(response.FailedPutCount) == int64(len(output.records)) {
 			output.timer.Start()
+			return fmt.Errorf("PutRecordBatch request returned with no records successfully recieved")
 		}
 
 		logrus.Errorf("[firehose] %d records failed to be delivered\n", aws.Int64Value(response.FailedPutCount))
@@ -219,4 +223,5 @@ func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatch
 		output.dataLength = 0
 	}
 
+	return nil
 }
