@@ -103,7 +103,7 @@ func newPutRecordBatcher(roleARN string, sess *session.Session) *firehose.Fireho
 func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}) int {
 	data, err := output.processRecord(record)
 	if err != nil {
-		logrus.Errorf("[firehose] Error: %v\n", err)
+		logrus.Errorf("[firehose] %v\n", err)
 		// discard this single bad record instead and let the batch continue
 		return fluentbit.FLB_OK
 	}
@@ -149,6 +149,9 @@ func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([
 		logrus.Debugf("[firehose] Failed to marshal record: %v\n", record)
 		return nil, err
 	}
+
+	// append newline
+	data = append(data, []byte("\n")...)
 
 	if len(data) > maximumRecordSize {
 		return nil, fmt.Errorf("Log record greater than max size allowed by Kinesis")
