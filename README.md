@@ -2,6 +2,10 @@
 
 A Fluent Bit output plugin for Amazon Kinesis Data Firehose.
 
+#### Security disclosures
+
+If you think you’ve found a potential security issue, please do not post it in the Issues.  Instead, please follow the instructions [here](https://aws.amazon.com/security/vulnerability-reporting/) or email AWS security directly at [aws-security@amazon.com](mailto:aws-security@amazon.com).
+
 ### Usage
 
 Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
@@ -22,6 +26,10 @@ Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
 ### Permissions
 
 The plugin requires `firehose:PutRecordBatch` permissions.
+
+### Credentials
+
+This plugin uses the AWS SDK Go, and uses its [default credential provider chain](https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/configuring-sdk.html). If you are using the plugin on Amazon EC2 or Amazon ECS, the plugin will use your EC2 instance role or ECS Task role permissions. The plugin can also retrieve credentials from a (shared credentials file)[https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html], or from the standard `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN` environment variables. 
 
 ### Environment Variables
 
