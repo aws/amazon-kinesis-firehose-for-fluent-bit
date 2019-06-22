@@ -48,6 +48,8 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	logrus.Infof("[firehose] plugin parameter data_keys = '%s'\n", dataKeys)
 	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
 	logrus.Infof("[firehose] plugin parameter role_arn = '%s'\n", roleARN)
+	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
+	logrus.Infof("[firehose] plugin parameter endpoint = '%s'\n", endpoint)
 
 	if deliveryStream == "" || region == "" {
 		logrus.Error("[firehose] delivery_stream and region are required configuration parameters")
@@ -55,7 +57,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	}
 
 	var err error
-	firehoseOutput, err = firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN)
+	firehoseOutput, err = firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint)
 	if err != nil {
 		logrus.Errorf("[firehose] Failed to initialize plugin: %v\n", err)
 		return output.FLB_ERROR

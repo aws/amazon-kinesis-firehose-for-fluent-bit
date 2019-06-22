@@ -22,6 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/firehose"
 	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
@@ -55,7 +56,7 @@ type OutputPlugin struct {
 }
 
 // NewOutputPlugin creates a OutputPlugin object
-func NewOutputPlugin(region string, deliveryStream string, dataKeys string, roleARN string) (*OutputPlugin, error) {
+func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint string) (*OutputPlugin, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(region),
 	})
@@ -63,7 +64,7 @@ func NewOutputPlugin(region string, deliveryStream string, dataKeys string, role
 		return nil, err
 	}
 
-	client := newPutRecordBatcher(roleARN, sess)
+	client := newPutRecordBatcher(roleARN, sess, endpoint)
 
 	records := make([]*firehose.Record, 0, maximumRecordsPerPut)
 
@@ -88,13 +89,27 @@ func NewOutputPlugin(region string, deliveryStream string, dataKeys string, role
 	}, nil
 }
 
-func newPutRecordBatcher(roleARN string, sess *session.Session) *firehose.Firehose {
-	if roleARN != "" {
-		creds := stscreds.NewCredentials(sess, roleARN)
-		return firehose.New(sess, &aws.Config{Credentials: creds})
+func newPutRecordBatcher(roleARN string, sess *session.Session, endpoint string) *firehose.Firehose {
+	svcConfig := &aws.Config{}
+	if endpoint != "" {
+		defaultResolver := endpoints.DefaultResolver()
+		cwCustomResolverFn := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+			if service == "firehose" {
+				return endpoints.ResolvedEndpoint{
+					URL: endpoint,
+				}, nil
+			}
+			return defaultResolver.EndpointFor(service, region, optFns...)
+		}
+		svcConfig.EndpointResolver = endpoints.ResolverFunc(cwCustomResolverFn)
 	}
 
-	return firehose.New(sess)
+	if roleARN != "" {
+		creds := stscreds.NewCredentials(sess, roleARN)
+		svcConfig.Credentials = creds
+	}
+
+	return firehose.New(sess, svcConfig)
 }
 
 // AddRecord accepts a record and adds it to the buffer, flushing the buffer if it is full
