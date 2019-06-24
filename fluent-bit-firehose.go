@@ -17,8 +17,8 @@ import (
 	"C"
 	"unsafe"
 
-	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose"
-	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
+	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/firehose"
+	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	"github.com/fluent/fluent-bit-go/output"
 
 	"github.com/sirupsen/logrus"

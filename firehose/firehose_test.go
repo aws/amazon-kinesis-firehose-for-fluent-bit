@@ -18,10 +18,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/firehose/mock_firehose"
+	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/firehose"
-	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/firehose/mock_firehose"
-	"github.com/awslabs/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	fluentbit "github.com/fluent/fluent-bit-go/output"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
