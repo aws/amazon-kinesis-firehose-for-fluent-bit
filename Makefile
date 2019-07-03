@@ -28,6 +28,12 @@ $(PLUGIN_BINARY): $(SOURCES)
 	go build -buildmode c-shared -o ./bin/firehose.so ./
 	@echo "Built Amazon Kinesis Data Firehose Fluent Bit Plugin"
 
+.PHONY: release
+release:
+	mkdir -p ./bin
+	go build -buildmode c-shared -o ./bin/firehose.so ./
+	@echo "Built Amazon Kinesis Data Firehose Fluent Bit Plugin"
+
 .PHONY: generate
 generate: $(SOURCES)
 	PATH=$(SCRIPT_PATH) go generate ./...
