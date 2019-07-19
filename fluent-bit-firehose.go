@@ -23,10 +23,30 @@ import (
 
 	"github.com/sirupsen/logrus"
 )
+import (
+	"fmt"
+)
 
 var (
-	firehoseOutput *firehose.OutputPlugin
+	pluginInstances []*firehose.OutputPlugin
 )
+
+func addPluginInstance(ctx unsafe.Pointer) error {
+	pluginID := len(pluginInstances)
+	output.FLBPluginSetContext(ctx, pluginID)
+	instance, err := newFirehoseOutput(ctx, pluginID)
+	if err != nil {
+		return err
+	}
+
+	pluginInstances = append(pluginInstances, instance)
+	return nil
+}
+
+func getPluginInstance(ctx unsafe.Pointer) *firehose.OutputPlugin {
+	pluginID := output.FLBPluginGetContext(ctx).(int)
+	return pluginInstances[pluginID]
+}
 
 // The "export" comments have syntactic meaning
 // This is how the compiler knows a function should be callable from the C code
@@ -36,28 +56,30 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 	return output.FLBPluginRegister(ctx, "firehose", "Amazon Kinesis Data Firehose Fluent Bit Plugin.")
 }
 
+func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin, error) {
+	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery_stream")
+	logrus.Infof("[firehose %d] plugin parameter delivery_stream = '%s'\n", pluginID, deliveryStream)
+	region := output.FLBPluginConfigKey(ctx, "region")
+	logrus.Infof("[firehose %d] plugin parameter region = '%s'\n", pluginID, region)
+	dataKeys := output.FLBPluginConfigKey(ctx, "data_keys")
+	logrus.Infof("[firehose %d] plugin parameter data_keys = '%s'\n", pluginID, dataKeys)
+	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
+	logrus.Infof("[firehose %d] plugin parameter role_arn = '%s'\n", pluginID, roleARN)
+	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
+	logrus.Infof("[firehose %d] plugin parameter endpoint = '%s'\n", pluginID, endpoint)
+
+	if deliveryStream == "" || region == "" {
+		return nil, fmt.Errorf("[firehose %d] delivery_stream and region are required configuration parameters", pluginID)
+	}
+
+	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, pluginID)
+}
+
 //export FLBPluginInit
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	plugins.SetupLogger()
 
-	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery_stream")
-	logrus.Infof("[firehose] plugin parameter delivery_stream = '%s'\n", deliveryStream)
-	region := output.FLBPluginConfigKey(ctx, "region")
-	logrus.Infof("[firehose] plugin parameter region = '%s'\n", region)
-	dataKeys := output.FLBPluginConfigKey(ctx, "data_keys")
-	logrus.Infof("[firehose] plugin parameter data_keys = '%s'\n", dataKeys)
-	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
-	logrus.Infof("[firehose] plugin parameter role_arn = '%s'\n", roleARN)
-	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
-	logrus.Infof("[firehose] plugin parameter endpoint = '%s'\n", endpoint)
-
-	if deliveryStream == "" || region == "" {
-		logrus.Error("[firehose] delivery_stream and region are required configuration parameters")
-		return output.FLB_ERROR
-	}
-
-	var err error
-	firehoseOutput, err = firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint)
+	err := addPluginInstance(ctx)
 	if err != nil {
 		logrus.Errorf("[firehose] Failed to initialize plugin: %v\n", err)
 		return output.FLB_ERROR
@@ -65,8 +87,8 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	return output.FLB_OK
 }
 
-//export FLBPluginFlush
-func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
+//export FLBPluginFlushCtx
+func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int {
 	var count int
 	var ret int
 	var record map[interface{}]interface{}
@@ -74,8 +96,9 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	// Create Fluent Bit decoder
 	dec := output.NewDecoder(data, int(length))
 
+	firehoseOutput := getPluginInstance(ctx)
 	fluentTag := C.GoString(tag)
-	logrus.Debugf("[firehose] Found logs with tag: %s\n", fluentTag)
+	logrus.Debugf("[firehose %d] Found logs with tag: %s\n", firehoseOutput.PluginID, fluentTag)
 
 	for {
 		// Extract Record
@@ -92,10 +115,10 @@ func FLBPluginFlush(data unsafe.Pointer, length C.int, tag *C.char) int {
 	}
 	err := firehoseOutput.Flush()
 	if err != nil {
-		logrus.Errorf("[firehose] %v\n", err)
+		logrus.Errorf("[firehose %d] %v\n", firehoseOutput.PluginID, err)
 		return output.FLB_ERROR
 	}
-	logrus.Debugf("[firehose] Processed %d events with tag %s\n", count, fluentTag)
+	logrus.Debugf("[firehose %d] Processed %d events with tag %s\n", firehoseOutput.PluginID, count, fluentTag)
 
 	return output.FLB_OK
 }
