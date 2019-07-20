@@ -111,7 +111,9 @@ func newPutRecordBatcher(roleARN string, sess *session.Session, endpoint string)
 		svcConfig.Credentials = creds
 	}
 
-	return firehose.New(sess, svcConfig)
+	client := firehose.New(sess, svcConfig)
+	client.Handlers.Build.PushBackNamed(plugins.CustomUserAgentHandler())
+	return client
 }
 
 // AddRecord accepts a record and adds it to the buffer, flushing the buffer if it is full
