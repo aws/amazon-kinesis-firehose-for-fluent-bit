@@ -215,7 +215,7 @@ func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatch
 			return fmt.Errorf("PutRecordBatch request returned with no records successfully recieved")
 		}
 
-		logrus.Errorf("[firehose %d] %d records failed to be delivered\n", output.PluginID, aws.Int64Value(response.FailedPutCount))
+		logrus.Warnf("[firehose %d] %d records failed to be delivered. Will retry.\n", output.PluginID, aws.Int64Value(response.FailedPutCount))
 		failedRecords := make([]*firehose.Record, 0, aws.Int64Value(response.FailedPutCount))
 		// try to resend failed records
 		for i, record := range response.RequestResponses {
