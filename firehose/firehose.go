@@ -15,6 +15,7 @@
 package firehose
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/firehose"
 	fluentbit "github.com/fluent/fluent-bit-go/output"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/lestrrat-go/strftime"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,6 +38,11 @@ const (
 	maximumRecordsPerPut      = 500
 	maximumPutRecordBatchSize = 4194304 // 4 MiB
 	maximumRecordSize         = 1024000 // 1000 KiB
+)
+
+const (
+	// We use strftime format specifiers because this will one day be re-written in C
+	defaultTimeFmt = "%Y-%m-%dT%H:%M:%S"
 )
 
 // PutRecordBatcher contains the firehose PutRecordBatch method call
@@ -48,6 +55,8 @@ type OutputPlugin struct {
 	region         string
 	deliveryStream string
 	dataKeys       string
+	timeKey        string
+	fmtStrftime    *strftime.Strftime
 	client         PutRecordBatcher
 	records        []*firehose.Record
 	dataLength     int
@@ -56,8 +65,8 @@ type OutputPlugin struct {
 	PluginID       int
 }
 
-// NewOutputPlugin creates a OutputPlugin object
-func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint string, pluginID int) (*OutputPlugin, error) {
+// NewOutputPlugin creates an OutputPlugin object
+func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKey, timeFmt string, pluginID int) (*OutputPlugin, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(region),
 	})
@@ -79,6 +88,18 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint string,
 		return nil, err
 	}
 
+	var timeFormatter *strftime.Strftime
+	if timeKey != "" {
+		if timeFmt == "" {
+			timeFmt = defaultTimeFmt
+		}
+		timeFormatter, err = strftime.New(timeFmt)
+		if err != nil {
+			logrus.Errorf("[firehose %d] Issue with strftime format in 'time_key_format'", pluginID)
+			return nil, err
+		}
+	}
+
 	return &OutputPlugin{
 		region:         region,
 		deliveryStream: deliveryStream,
@@ -87,6 +108,8 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint string,
 		dataKeys:       dataKeys,
 		backoff:        plugins.NewBackoff(),
 		timer:          timer,
+		timeKey:        timeKey,
+		fmtStrftime:    timeFormatter,
 		PluginID:       pluginID,
 	}, nil
 }
@@ -119,7 +142,16 @@ func newPutRecordBatcher(roleARN string, sess *session.Session, endpoint string)
 // AddRecord accepts a record and adds it to the buffer, flushing the buffer if it is full
 // the return value is one of: FLB_OK FLB_RETRY
 // API Errors lead to an FLB_RETRY, and all other errors are logged, the record is discarded and FLB_OK is returned
-func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}) int {
+func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}, timeStamp *time.Time) int {
+	if output.timeKey != "" {
+		buf := new(bytes.Buffer)
+		err := output.fmtStrftime.Format(buf, *timeStamp)
+		if err != nil {
+			logrus.Errorf("[firehose %d] Could not create timestamp %v\n", output.PluginID, err)
+			return fluentbit.FLB_ERROR
+		}
+		record[output.timeKey] = buf.String()
+	}
 	data, err := output.processRecord(record)
 	if err != nil {
 		logrus.Errorf("[firehose %d] %v\n", output.PluginID, err)

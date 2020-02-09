@@ -25,6 +25,7 @@ import (
 )
 import (
 	"fmt"
+	"time"
 )
 
 var (
@@ -67,12 +68,16 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 	logrus.Infof("[firehose %d] plugin parameter role_arn = '%s'\n", pluginID, roleARN)
 	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
 	logrus.Infof("[firehose %d] plugin parameter endpoint = '%s'\n", pluginID, endpoint)
+	timeKey := output.FLBPluginConfigKey(ctx, "time_key")
+	logrus.Infof("[firehose %d] plugin parameter time_key = '%s'\n", pluginID, timeKey)
+	timeKeyFmt := output.FLBPluginConfigKey(ctx, "time_key_format")
+	logrus.Infof("[firehose %d] plugin parameter time_key_format = '%s'\n", pluginID, timeKeyFmt)
 
 	if deliveryStream == "" || region == "" {
 		return nil, fmt.Errorf("[firehose %d] delivery_stream and region are required configuration parameters", pluginID)
 	}
 
-	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, pluginID)
+	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKey, timeKeyFmt, pluginID)
 }
 
 //export FLBPluginInit
@@ -91,6 +96,8 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int {
 	var count int
 	var ret int
+	var ts interface{}
+	var timestamp time.Time
 	var record map[interface{}]interface{}
 
 	// Create Fluent Bit decoder
@@ -102,12 +109,23 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 
 	for {
 		// Extract Record
-		ret, _, record = output.GetRecord(dec)
+		ret, ts, record = output.GetRecord(dec)
 		if ret != 0 {
 			break
 		}
 
-		retCode := firehoseOutput.AddRecord(record)
+		switch tts := ts.(type) {
+		case output.FLBTime:
+			timestamp = tts.Time
+		case uint64:
+			// when ts is of type uint64 it appears to
+			// be the amount of seconds since unix epoch.
+			timestamp = time.Unix(int64(tts), 0)
+		default:
+			timestamp = time.Now()
+		}
+
+		retCode := firehoseOutput.AddRecord(record, &timestamp)
 		if retCode != output.FLB_OK {
 			return retCode
 		}

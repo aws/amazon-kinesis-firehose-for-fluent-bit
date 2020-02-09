@@ -48,7 +48,8 @@ func TestAddRecord(t *testing.T) {
 		"somekey": []byte("some value"),
 	}
 
-	retCode := output.AddRecord(record)
+	timeStamp := time.Now()
+	retCode := output.AddRecord(record, &timeStamp)
 
 	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
@@ -82,7 +83,8 @@ func TestAddRecordAndFlush(t *testing.T) {
 		timer:          timer,
 	}
 
-	retCode := output.AddRecord(record)
+	timeStamp := time.Now()
+	retCode := output.AddRecord(record, &timeStamp)
 	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 
 	err := output.Flush()
