@@ -125,6 +125,14 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 
 //export FLBPluginExit
 func FLBPluginExit() int {
+	// Before final exit, call Flush() for all the instances of the Output Plugin
+	for i := range pluginInstances {
+		err := pluginInstances[i].Flush()
+		if err != nil {
+			logrus.Errorf("[firehose %d] %v\n", pluginInstances[i].PluginID, err)
+		}
+	}
+
 	return output.FLB_OK
 }
 
