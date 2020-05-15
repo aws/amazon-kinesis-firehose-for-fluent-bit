@@ -40,7 +40,6 @@ func TestAddRecord(t *testing.T) {
 		dataKeys:       "",
 		client:         nil,
 		records:        make([]*firehose.Record, 0, 500),
-		backoff:        plugins.NewBackoff(),
 		timer:          timer,
 	}
 
@@ -79,7 +78,6 @@ func TestAddRecordAndFlush(t *testing.T) {
 		dataKeys:       "",
 		client:         mockFirehose,
 		records:        make([]*firehose.Record, 0, 500),
-		backoff:        plugins.NewBackoff(),
 		timer:          timer,
 	}
 
@@ -87,7 +85,7 @@ func TestAddRecordAndFlush(t *testing.T) {
 	retCode := output.AddRecord(record, &timeStamp)
 	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 
-	err := output.Flush()
-	assert.NoError(t, err, "Unexpected error calling flush")
+	retCode = output.Flush()
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 
 }

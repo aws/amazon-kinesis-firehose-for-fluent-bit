@@ -60,7 +60,6 @@ type OutputPlugin struct {
 	client         PutRecordBatcher
 	records        []*firehose.Record
 	dataLength     int
-	backoff        *plugins.Backoff
 	timer          *plugins.Timeout
 	PluginID       int
 }
@@ -106,7 +105,6 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKe
 		client:         client,
 		records:        records,
 		dataKeys:       dataKeys,
-		backoff:        plugins.NewBackoff(),
 		timer:          timer,
 		timeKey:        timeKey,
 		fmtStrftime:    timeFormatter,
@@ -162,12 +160,11 @@ func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}, timeSt
 	newDataSize := len(data)
 
 	if len(output.records) == maximumRecordsPerPut || (output.dataLength+newDataSize) > maximumPutRecordBatchSize {
-		err = output.sendCurrentBatch()
+		retCode, err := output.sendCurrentBatch()
 		if err != nil {
 			logrus.Errorf("[firehose %d] %v\n", output.PluginID, err)
-			// send failures are retryable
-			return fluentbit.FLB_RETRY
 		}
+		return retCode
 	}
 
 	output.records = append(output.records, &firehose.Record{
@@ -178,8 +175,13 @@ func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}, timeSt
 }
 
 // Flush sends the current buffer of records
-func (output *OutputPlugin) Flush() error {
-	return output.sendCurrentBatch()
+// Returns FLB_OK, FLB_RETRY, FLB_ERROR
+func (output *OutputPlugin) Flush() int {
+	retCode, err := output.sendCurrentBatch()
+	if err != nil {
+		logrus.Errorf("[firehose %d] %v\n", output.PluginID, err)
+	}
+	return retCode
 }
 
 func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([]byte, error) {
@@ -211,8 +213,7 @@ func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([
 	return data, nil
 }
 
-func (output *OutputPlugin) sendCurrentBatch() error {
-	output.backoff.Wait()
+func (output *OutputPlugin) sendCurrentBatch() (int, error) {
 	output.timer.Check()
 
 	response, err := output.client.PutRecordBatch(&firehose.PutRecordBatchInput{
@@ -225,12 +226,9 @@ func (output *OutputPlugin) sendCurrentBatch() error {
 		if aerr, ok := err.(awserr.Error); ok {
 			if aerr.Code() == firehose.ErrCodeServiceUnavailableException {
 				logrus.Warnf("[firehose %d] Throughput limits for the delivery stream may have been exceeded.", output.PluginID)
-				// https://docs.aws.amazon.com/sdk-for-go/api/service/firehose/#Firehose.PutRecordBatch
-				// Firehose recommends backoff when this error is encountered
-				output.backoff.StartBackoff()
 			}
 		}
-		return err
+		return fluentbit.FLB_RETRY, err
 	}
 	logrus.Debugf("[firehose %d] Sent %d events to Firehose\n", output.PluginID, len(output.records))
 
@@ -239,12 +237,12 @@ func (output *OutputPlugin) sendCurrentBatch() error {
 
 // processAPIResponse processes the successful and failed records
 // it returns an error iff no records succeeded (i.e.) no progress has been made
-func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatchOutput) error {
+func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatchOutput) (int, error) {
 	if aws.Int64Value(response.FailedPutCount) > 0 {
 		// start timer if all records failed (no progress has been made)
 		if aws.Int64Value(response.FailedPutCount) == int64(len(output.records)) {
 			output.timer.Start()
-			return fmt.Errorf("PutRecordBatch request returned with no records successfully recieved")
+			return fluentbit.FLB_RETRY, fmt.Errorf("PutRecordBatch request returned with no records successfully recieved")
 		}
 
 		logrus.Warnf("[firehose %d] %d records failed to be delivered. Will retry.\n", output.PluginID, aws.Int64Value(response.FailedPutCount))
@@ -256,9 +254,8 @@ func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatch
 				failedRecords = append(failedRecords, output.records[i])
 			}
 			if aws.StringValue(record.ErrorCode) == firehose.ErrCodeServiceUnavailableException {
-				// https://docs.aws.amazon.com/sdk-for-go/api/service/firehose/#Firehose.PutRecordBatch
-				// Firehose recommends backoff when this error is encountered
-				output.backoff.StartBackoff()
+				logrus.Warnf("[firehose %d] Throughput limits for the delivery stream may have been exceeded.", output.PluginID)
+				return fluentbit.FLB_RETRY, nil
 			}
 		}
 
@@ -272,10 +269,9 @@ func (output *OutputPlugin) processAPIResponse(response *firehose.PutRecordBatch
 	} else {
 		// request fully succeeded
 		output.timer.Reset()
-		output.backoff.Reset()
 		output.records = output.records[:0]
 		output.dataLength = 0
 	}
 
-	return nil
+	return fluentbit.FLB_OK, nil
 }

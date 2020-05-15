@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	retry "github.com/cenkalti/backoff"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,53 +27,6 @@ const (
 	fluentBitLogLevelEnvVar  = "FLB_LOG_LEVEL"
 	sendFailureTimeoutEnvVar = "SEND_FAILURE_TIMEOUT"
 )
-
-const (
-	initialInterval = 100 * time.Millisecond
-	maxInterval     = 10 * time.Second
-)
-
-// Backoff wraps github.com/cenkalti/backoff
-// Wait() is called for each AWS API call that may need back off
-// But backoff only occurs if StartBackoff() has previously been called
-// Reset() should be called whenever backoff can end.
-type Backoff struct {
-	doBackoff  bool
-	expBackoff *retry.ExponentialBackOff
-}
-
-// Reset ends the exponential backoff
-func (b *Backoff) Reset() {
-	b.doBackoff = false
-	b.expBackoff.Reset()
-}
-
-// Wait enacts the exponential backoff, if StartBackoff() has been called
-func (b *Backoff) Wait() {
-	if b.doBackoff {
-		d := b.expBackoff.NextBackOff()
-		logrus.Debugf("[go plugin] In exponential backoff, waiting %v", d)
-		time.Sleep(d)
-	}
-}
-
-// StartBackoff begins exponential backoff
-// its a no-op if backoff has already started
-func (b *Backoff) StartBackoff() {
-	b.doBackoff = true
-}
-
-// NewBackoff creates a new Backoff struct with default values
-func NewBackoff() *Backoff {
-	b := retry.NewExponentialBackOff()
-	b.InitialInterval = initialInterval
-	b.MaxElapsedTime = 0 // The backoff object never expires
-	b.MaxInterval = maxInterval
-	return &Backoff{
-		doBackoff:  false,
-		expBackoff: b,
-	}
-}
 
 // Timeout is a simple timeout for single-threaded programming
 // (Goroutines are expensive in Cgo)
