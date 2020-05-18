@@ -163,8 +163,8 @@ func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}, timeSt
 		retCode, err := output.sendCurrentBatch()
 		if err != nil {
 			logrus.Errorf("[firehose %d] %v\n", output.PluginID, err)
+			return retCode
 		}
-		return retCode
 	}
 
 	output.records = append(output.records, &firehose.Record{
