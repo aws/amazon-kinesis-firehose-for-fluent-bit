@@ -163,6 +163,8 @@ func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}, timeSt
 		retCode, err := output.sendCurrentBatch()
 		if err != nil {
 			logrus.Errorf("[firehose %d] %v\n", output.PluginID, err)
+		}
+		if retCode != fluentbit.FLB_OK {
 			return retCode
 		}
 	}
