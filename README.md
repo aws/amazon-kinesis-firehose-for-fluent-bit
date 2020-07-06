@@ -24,7 +24,7 @@ Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
 * `role_arn`: ARN of an IAM role to assume (for cross account access).
 * `endpoint`: Specify a custom endpoint for the Kinesis Firehose API.
 * `time_key`: Add the timestamp to the record under this key. By default the timestamp from Fluent Bit will not be added to records sent to Kinesis.
-* `time_key_format`: [strftime](http://man7.org/linux/man-pages/man3/strftime.3.html) compliant format string for the timestamp; for example, `%Y-%m-%dT%H:%M:%S%z`. This option is used with `time_key`. 
+* `time_key_format`: [strftime](http://man7.org/linux/man-pages/man3/strftime.3.html) compliant format string for the timestamp; for example, `%Y-%m-%dT%H:%M:%S%z`. This option is used with `time_key`. You can also use `%L` for milliseconds and `%f` for microseconds.
 
 ### Permissions
 
