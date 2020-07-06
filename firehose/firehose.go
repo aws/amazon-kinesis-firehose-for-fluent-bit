@@ -88,7 +88,7 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint
 		if timeFmt == "" {
 			timeFmt = defaultTimeFmt
 		}
-		timeFormatter, err = strftime.New(timeFmt)
+		timeFormatter, err = strftime.New(timeFmt, strftime.WithMilliseconds('L'), strftime.WithMicroseconds('f'))
 		if err != nil {
 			logrus.Errorf("[firehose %d] Issue with strftime format in 'time_key_format'", pluginID)
 			return nil, err
