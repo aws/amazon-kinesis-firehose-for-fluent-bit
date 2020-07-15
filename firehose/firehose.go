@@ -65,15 +65,11 @@ type OutputPlugin struct {
 }
 
 // NewOutputPlugin creates an OutputPlugin object
-func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKey, timeFmt string, pluginID int) (*OutputPlugin, error) {
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(region),
-	})
+func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt string, pluginID int) (*OutputPlugin, error) {
+	client, err := newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint)
 	if err != nil {
 		return nil, err
 	}
-
-	client := newPutRecordBatcher(roleARN, sess, endpoint)
 
 	records := make([]*firehose.Record, 0, maximumRecordsPerPut)
 
@@ -112,21 +108,31 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKe
 	}, nil
 }
 
-func newPutRecordBatcher(roleARN string, sess *session.Session, endpoint string) *firehose.Firehose {
-	svcConfig := &aws.Config{}
-	if endpoint != "" {
-		defaultResolver := endpoints.DefaultResolver()
-		cwCustomResolverFn := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
-			if service == "firehose" {
-				return endpoints.ResolvedEndpoint{
-					URL: endpoint,
-				}, nil
-			}
-			return defaultResolver.EndpointFor(service, region, optFns...)
+func newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint string) (*firehose.Firehose, error) {
+	defaultResolver := endpoints.DefaultResolver()
+	customResolverFn := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+		if service == endpoints.FirehoseServiceID && firehoseEndpoint != "" {
+			return endpoints.ResolvedEndpoint{
+				URL: firehoseEndpoint,
+			}, nil
+		} else if service == endpoints.StsServiceID && stsEndpoint != "" {
+			return endpoints.ResolvedEndpoint{
+				URL: stsEndpoint,
+			}, nil
 		}
-		svcConfig.EndpointResolver = endpoints.ResolverFunc(cwCustomResolverFn)
+		return defaultResolver.EndpointFor(service, region, optFns...)
 	}
 
+	sess, err := session.NewSession(&aws.Config{
+		Region:                        aws.String(region),
+		EndpointResolver:              endpoints.ResolverFunc(customResolverFn),
+		CredentialsChainVerboseErrors: aws.Bool(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	svcConfig := &aws.Config{}
 	if roleARN != "" {
 		creds := stscreds.NewCredentials(sess, roleARN)
 		svcConfig.Credentials = creds
@@ -134,7 +140,7 @@ func newPutRecordBatcher(roleARN string, sess *session.Session, endpoint string)
 
 	client := firehose.New(sess, svcConfig)
 	client.Handlers.Build.PushBackNamed(plugins.CustomUserAgentHandler())
-	return client
+	return client, nil
 }
 
 // AddRecord accepts a record and adds it to the buffer, flushing the buffer if it is full
