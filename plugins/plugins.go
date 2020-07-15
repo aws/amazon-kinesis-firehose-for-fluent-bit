@@ -16,6 +16,7 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -60,6 +61,29 @@ func (t *Timeout) Check() {
 			t.timeoutFunc(t.duration)
 		}
 	}
+}
+
+// Implements the log_key option, which allows customers to only send the value of a given key to CW Logs
+func LogKey(record map[interface{}]interface{}, logKey string) (*interface{}, error) {
+	for key, val := range record {
+		var currentKey string
+		switch t := key.(type) {
+		case []byte:
+			currentKey = string(t)
+		case string:
+			currentKey = t
+		default:
+			logrus.Debugf("[go plugin]: Unable to determine type of key %v\n", t)
+			continue
+		}
+
+		if logKey == currentKey {
+			return &val, nil
+		}
+
+	}
+
+	return nil, fmt.Errorf("Failed to find key %s specified by log_key option in log record: %v", logKey, record)
 }
 
 // NewTimeout returns a new timeout object
