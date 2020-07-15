@@ -66,8 +66,10 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 	logrus.Infof("[firehose %d] plugin parameter data_keys = '%s'\n", pluginID, dataKeys)
 	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
 	logrus.Infof("[firehose %d] plugin parameter role_arn = '%s'\n", pluginID, roleARN)
-	endpoint := output.FLBPluginConfigKey(ctx, "endpoint")
-	logrus.Infof("[firehose %d] plugin parameter endpoint = '%s'\n", pluginID, endpoint)
+	firehoseEndpoint := output.FLBPluginConfigKey(ctx, "endpoint")
+	logrus.Infof("[firehose %d] plugin parameter endpoint = '%s'\n", pluginID, firehoseEndpoint)
+	stsEndpoint := output.FLBPluginConfigKey(ctx, "sts_endpoint")
+	logrus.Infof("[firehose %d] plugin parameter sts_endpoint = '%s'\n", pluginID, stsEndpoint)
 	timeKey := output.FLBPluginConfigKey(ctx, "time_key")
 	logrus.Infof("[firehose %d] plugin parameter time_key = '%s'\n", pluginID, timeKey)
 	timeKeyFmt := output.FLBPluginConfigKey(ctx, "time_key_format")
@@ -77,7 +79,7 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 		return nil, fmt.Errorf("[firehose %d] delivery_stream and region are required configuration parameters", pluginID)
 	}
 
-	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKey, timeKeyFmt, pluginID)
+	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeKeyFmt, pluginID)
 }
 
 //export FLBPluginInit
