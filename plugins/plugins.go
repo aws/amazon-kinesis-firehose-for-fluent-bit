@@ -63,7 +63,7 @@ func (t *Timeout) Check() {
 	}
 }
 
-// Implements the log_key option, which allows customers to only send the value of a given key to CW Logs
+// LogKey returns the value associated with the input key from the record map, or an error if the key is not found.
 func LogKey(record map[interface{}]interface{}, logKey string) (*interface{}, error) {
 	for key, val := range record {
 		var currentKey string
