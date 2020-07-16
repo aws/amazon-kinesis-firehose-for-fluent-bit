@@ -109,7 +109,6 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint
 }
 
 func newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint string) (*firehose.Firehose, error) {
-	defaultResolver := endpoints.DefaultResolver()
 	customResolverFn := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
 		if service == endpoints.FirehoseServiceID && firehoseEndpoint != "" {
 			return endpoints.ResolvedEndpoint{
@@ -120,7 +119,7 @@ func newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint string) 
 				URL: stsEndpoint,
 			}, nil
 		}
-		return defaultResolver.EndpointFor(service, region, optFns...)
+		return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
 	}
 
 	sess, err := session.NewSession(&aws.Config{
