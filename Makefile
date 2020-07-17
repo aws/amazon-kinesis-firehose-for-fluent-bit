@@ -23,7 +23,7 @@ PLUGIN_BINARY := ./bin/firehose.so
 build: $(PLUGIN_BINARY)
 
 $(PLUGIN_BINARY): $(SOURCES)
-	PATH=${PATH} golint ./plugins ./firehose
+	PATH=${PATH} ./bin/golangci-lint run -c golint.yml
 	mkdir -p ./bin
 	go build -buildmode c-shared -o ./bin/firehose.so ./
 	@echo "Built Amazon Kinesis Data Firehose Fluent Bit Plugin"

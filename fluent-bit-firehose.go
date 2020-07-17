@@ -50,9 +50,9 @@ func getPluginInstance(ctx unsafe.Pointer) *firehose.OutputPlugin {
 }
 
 // The "export" comments have syntactic meaning
-// This is how the compiler knows a function should be callable from the C code
+// This is how the compiler knows a function should be callable from the C code.
 
-//export FLBPluginRegister
+// FLBPluginRegister exporter.
 func FLBPluginRegister(ctx unsafe.Pointer) int {
 	return output.FLBPluginRegister(ctx, "firehose", "Amazon Kinesis Data Firehose Fluent Bit Plugin.")
 }
@@ -80,7 +80,7 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, endpoint, timeKey, timeKeyFmt, pluginID)
 }
 
-//export FLBPluginInit
+// FLBPluginInit exporter.
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	plugins.SetupLogger()
 
@@ -92,7 +92,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 	return output.FLB_OK
 }
 
-//export FLBPluginFlushCtx
+// FLBPluginFlushCtx exporter.
 func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int {
 	var count int
 	var ret int
@@ -100,7 +100,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	var timestamp time.Time
 	var record map[interface{}]interface{}
 
-	// Create Fluent Bit decoder
+	// Create Fluent Bit decoder.
 	dec := output.NewDecoder(data, int(length))
 
 	firehoseOutput := getPluginInstance(ctx)
@@ -108,7 +108,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	logrus.Debugf("[firehose %d] Found logs with tag: %s\n", firehoseOutput.PluginID, fluentTag)
 
 	for {
-		// Extract Record
+		// Extract Record.
 		ret, ts, record = output.GetRecord(dec)
 		if ret != 0 {
 			break
@@ -140,9 +140,9 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	return output.FLB_OK
 }
 
-//export FLBPluginExit
+// FLBPluginExit exporter.
 func FLBPluginExit() int {
-	// Before final exit, call Flush() for all the instances of the Output Plugin
+	// Before final exit, call Flush() for all the instances of the Output Plugin.
 	for i := range pluginInstances {
 		pluginInstances[i].Flush()
 	}
