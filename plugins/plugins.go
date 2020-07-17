@@ -16,6 +16,7 @@
 package plugins
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -60,6 +61,18 @@ func (t *Timeout) Check() {
 			// run the timeout function
 			t.timeoutFunc(t.duration)
 		}
+	}
+}
+
+// EncodeLogKey prepares a record to be sent when the log_key parameter is used
+func EncodeLogKey(log *interface{}) ([]byte, error) {
+	switch t := (*log).(type) {
+	case []byte:
+		return t, nil
+	case string:
+		return []byte(t), nil
+	default:
+		return json.Marshal(log)
 	}
 }
 
