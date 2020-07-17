@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.0
+* Feature - Add sts_endpoint param for custom STS API endpoint (#31)
+
 ## 1.2.1
 * Bug - Remove exponential backoff code (#23)
 
