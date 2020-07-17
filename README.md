@@ -1,3 +1,4 @@
+[![Test Actions Status](https://github.com/aws/amazon-kinesis-firehose-for-fluent-bit/workflows/Build/badge.svg)](https://github.com/aws/amazon-kinesis-firehose-for-fluent-bit/actions)
 ## Fluent Bit Plugin for Amazon Kinesis Firehose
 
 A Fluent Bit output plugin for Amazon Kinesis Data Firehose.
