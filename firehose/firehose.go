@@ -57,6 +57,7 @@ type OutputPlugin struct {
 	dataKeys       string
 	timeKey        string
 	fmtStrftime    *strftime.Strftime
+	logKey         string
 	client         PutRecordBatcher
 	records        []*firehose.Record
 	dataLength     int
@@ -65,7 +66,7 @@ type OutputPlugin struct {
 }
 
 // NewOutputPlugin creates an OutputPlugin object
-func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt string, pluginID int) (*OutputPlugin, error) {
+func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt, logKey string, pluginID int) (*OutputPlugin, error) {
 	client, err := newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint)
 	if err != nil {
 		return nil, err
@@ -104,6 +105,7 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint
 		timer:          timer,
 		timeKey:        timeKey,
 		fmtStrftime:    timeFormatter,
+		logKey:         logKey,
 		PluginID:       pluginID,
 	}, nil
 }
@@ -204,7 +206,19 @@ func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([
 	}
 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	data, err := json.Marshal(record)
+	var data []byte
+
+	if output.logKey != "" {
+		log, err := plugins.LogKey(record, output.logKey)
+		if err != nil {
+			return nil, err
+		}
+
+		data, err = plugins.EncodeLogKey(log)
+	} else {
+		data, err = json.Marshal(record)
+	}
+
 	if err != nil {
 		logrus.Debugf("[firehose %d] Failed to marshal record: %v\n", output.PluginID, record)
 		return nil, err
