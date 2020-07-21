@@ -22,6 +22,7 @@ Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
 * `region`: The region which your Firehose delivery stream(s) is/are in.
 * `delivery_stream`: The name of the delivery stream that you want log records sent to.
 * `data_keys`: By default, the whole log record will be sent to Kinesis. If you specify a key name(s) with this option, then only those keys and values will be sent to Kinesis. For example, if you are using the Fluentd Docker log driver, you can specify `data_keys log` and only the log message will be sent to Kinesis. If you specify multiple keys, they should be comma delimited.
+* `log_key`: By default, the whole log record will be sent to Firehose. If you specify a key name with this option, then only the value of that key will be sent to Firehose. For example, if you are using the Fluentd Docker log driver, you can specify `log_key log` and only the log message will be sent to Firehose.
 * `role_arn`: ARN of an IAM role to assume (for cross account access).
 * `endpoint`: Specify a custom endpoint for the Kinesis Firehose API.
 * `sts_endpoint`: Specify a custom endpoint for the STS API; used to assume your custom role provided with `role_arn`.
