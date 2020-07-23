@@ -235,6 +235,11 @@ func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([
 }
 
 func (output *OutputPlugin) sendCurrentBatch() (int, error) {
+	// return if the batch is empty
+	if len(output.records) == 0 {
+		return fluentbit.FLB_OK, nil
+	}
+
 	output.timer.Check()
 
 	response, err := output.client.PutRecordBatch(&firehose.PutRecordBatchInput{
