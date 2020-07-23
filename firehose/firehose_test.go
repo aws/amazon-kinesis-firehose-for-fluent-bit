@@ -89,3 +89,25 @@ func TestAddRecordAndFlush(t *testing.T) {
 	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 
 }
+
+func TestSendCurrentBatch(t *testing.T) {
+	output := OutputPlugin{
+		region:         "us-east-1",
+		deliveryStream: "stream",
+		dataKeys:       "",
+		client:         nil,
+		records:        nil,
+	}
+
+	retCode, err := output.sendCurrentBatch()
+
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+	assert.Nil(t, err)
+
+	output.records = make([]*firehose.Record, 0, 500)
+	retCode, err = output.sendCurrentBatch()
+
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+	assert.Nil(t, err)
+
+}
