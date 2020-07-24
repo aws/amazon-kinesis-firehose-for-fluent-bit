@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+* Feature - Add log_key option for firehose output plugin (#33)
+* Bug - Check for empty batch before sending (#27)
+
 ## 1.3.0
 * Feature - Add sts_endpoint param for custom STS API endpoint (#31)
 
