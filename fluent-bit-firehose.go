@@ -59,23 +59,23 @@ func FLBPluginRegister(ctx unsafe.Pointer) int {
 
 func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin, error) {
 	deliveryStream := output.FLBPluginConfigKey(ctx, "delivery_stream")
-	logrus.Infof("[firehose %d] plugin parameter delivery_stream = '%s'\n", pluginID, deliveryStream)
+	logrus.Infof("[firehose %d] plugin parameter delivery_stream = '%s'", pluginID, deliveryStream)
 	region := output.FLBPluginConfigKey(ctx, "region")
-	logrus.Infof("[firehose %d] plugin parameter region = '%s'\n", pluginID, region)
+	logrus.Infof("[firehose %d] plugin parameter region = '%s'", pluginID, region)
 	dataKeys := output.FLBPluginConfigKey(ctx, "data_keys")
-	logrus.Infof("[firehose %d] plugin parameter data_keys = '%s'\n", pluginID, dataKeys)
+	logrus.Infof("[firehose %d] plugin parameter data_keys = '%s'", pluginID, dataKeys)
 	roleARN := output.FLBPluginConfigKey(ctx, "role_arn")
-	logrus.Infof("[firehose %d] plugin parameter role_arn = '%s'\n", pluginID, roleARN)
+	logrus.Infof("[firehose %d] plugin parameter role_arn = '%s'", pluginID, roleARN)
 	firehoseEndpoint := output.FLBPluginConfigKey(ctx, "endpoint")
-	logrus.Infof("[firehose %d] plugin parameter endpoint = '%s'\n", pluginID, firehoseEndpoint)
+	logrus.Infof("[firehose %d] plugin parameter endpoint = '%s'", pluginID, firehoseEndpoint)
 	stsEndpoint := output.FLBPluginConfigKey(ctx, "sts_endpoint")
-	logrus.Infof("[firehose %d] plugin parameter sts_endpoint = '%s'\n", pluginID, stsEndpoint)
+	logrus.Infof("[firehose %d] plugin parameter sts_endpoint = '%s'", pluginID, stsEndpoint)
 	timeKey := output.FLBPluginConfigKey(ctx, "time_key")
-	logrus.Infof("[firehose %d] plugin parameter time_key = '%s'\n", pluginID, timeKey)
+	logrus.Infof("[firehose %d] plugin parameter time_key = '%s'", pluginID, timeKey)
 	timeKeyFmt := output.FLBPluginConfigKey(ctx, "time_key_format")
-	logrus.Infof("[firehose %d] plugin parameter time_key_format = '%s'\n", pluginID, timeKeyFmt)
+	logrus.Infof("[firehose %d] plugin parameter time_key_format = '%s'", pluginID, timeKeyFmt)
 	logKey := output.FLBPluginConfigKey(ctx, "log_key")
-	logrus.Infof("[firehose %d] plugin parameter log_key = '%s'\n", pluginID, logKey)
+	logrus.Infof("[firehose %d] plugin parameter log_key = '%s'", pluginID, logKey)
 
 	if deliveryStream == "" || region == "" {
 		return nil, fmt.Errorf("[firehose %d] delivery_stream and region are required configuration parameters", pluginID)
@@ -90,7 +90,7 @@ func FLBPluginInit(ctx unsafe.Pointer) int {
 
 	err := addPluginInstance(ctx)
 	if err != nil {
-		logrus.Errorf("[firehose] Failed to initialize plugin: %v\n", err)
+		logrus.Errorf("[firehose] Failed to initialize plugin: %v", err)
 		return output.FLB_ERROR
 	}
 	return output.FLB_OK
@@ -109,7 +109,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 
 	firehoseOutput := getPluginInstance(ctx)
 	fluentTag := C.GoString(tag)
-	logrus.Debugf("[firehose %d] Found logs with tag: %s\n", firehoseOutput.PluginID, fluentTag)
+	logrus.Debugf("[firehose %d] Found logs with tag: %s", firehoseOutput.PluginID, fluentTag)
 
 	for {
 		// Extract Record
@@ -139,7 +139,7 @@ func FLBPluginFlushCtx(ctx, data unsafe.Pointer, length C.int, tag *C.char) int 
 	if retCode != output.FLB_OK {
 		return retCode
 	}
-	logrus.Debugf("[firehose %d] Processed %d events with tag %s\n", firehoseOutput.PluginID, count, fluentTag)
+	logrus.Debugf("[firehose %d] Processed %d events with tag %s", firehoseOutput.PluginID, count, fluentTag)
 
 	return output.FLB_OK
 }
