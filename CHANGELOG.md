@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+* Enhancement - Remove unnecessary (odd-looking) new lines after config logs (#45)
+* Enhancement - Dependencies updated (#48, #49)
+
 ## 1.4.0
 * Feature - Add log_key option for firehose output plugin (#33)
 * Bug - Check for empty batch before sending (#27)
