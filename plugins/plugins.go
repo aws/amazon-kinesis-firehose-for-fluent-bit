@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"runtime"
 	"strings"
 	"time"
 
@@ -127,11 +129,18 @@ func NewTimeout(timeoutFunc func(duration time.Duration)) (*Timeout, error) {
 // SetupLogger sets up Logrus with the log level determined by the Fluent Bit Env Var
 func SetupLogger() {
 	logrus.SetOutput(os.Stdout)
+
 	switch strings.ToUpper(os.Getenv(fluentBitLogLevelEnvVar)) {
 	default:
 		logrus.SetLevel(logrus.InfoLevel)
 	case "DEBUG":
 		logrus.SetLevel(logrus.DebugLevel)
+		logrus.SetReportCaller(true)
+		logrus.SetFormatter(&logrus.TextFormatter{
+			CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+				return f.Function + "()", fmt.Sprintf("%s:%d", path.Base(f.File), f.Line)
+			},
+		})
 	case "INFO":
 		logrus.SetLevel(logrus.InfoLevel)
 	case "ERROR":
