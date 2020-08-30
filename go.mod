@@ -8,4 +8,5 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/lestrrat-go/strftime v1.0.3
 	github.com/sirupsen/logrus v1.6.0
+	github.com/stretchr/testify v1.5.1
 )
