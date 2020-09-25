@@ -38,6 +38,7 @@ const (
 	maximumRecordsPerPut      = 500
 	maximumPutRecordBatchSize = 4194304 // 4 MiB
 	maximumRecordSize         = 1024000 // 1000 KiB
+	truncatedSuffix           = "[Truncated...]"
 )
 
 const (
@@ -228,7 +229,9 @@ func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([
 	data = append(data, []byte("\n")...)
 
 	if len(data) > maximumRecordSize {
-		return nil, fmt.Errorf("Log record greater than max size allowed by Kinesis")
+		logrus.Warnf("[firehose %d] Found record with %d bytes, truncating to 1000Kib, stream=%s\n", output.PluginID, len(data), output.deliveryStream)
+		data = data[:maximumRecordSize-len(truncatedSuffix)]
+		data = append(data, []byte(truncatedSuffix)...)
 	}
 
 	return data, nil
