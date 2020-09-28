@@ -54,6 +54,38 @@ func TestAddRecord(t *testing.T) {
 	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
 }
 
+func TestTruncateLargeLogEvent(t *testing.T) {
+	timer, _ := plugins.NewTimeout(func(d time.Duration) {
+		logrus.Errorf("[firehose] timeout threshold reached: Failed to send logs for %v\n", d)
+		logrus.Error("[firehose] Quitting Fluent Bit")
+		os.Exit(1)
+	})
+	output := OutputPlugin{
+		region:         "us-east-1",
+		deliveryStream: "stream",
+		dataKeys:       "",
+		client:         nil,
+		records:        make([]*firehose.Record, 0, 500),
+		timer:          timer,
+	}
+
+	record := map[interface{}]interface{}{
+		"somekey": make([]byte, 1024005),
+	}
+
+	timeStamp := time.Now()
+	retCode := output.AddRecord(record, &timeStamp)
+	actualData, err := output.processRecord(record)
+
+	if err != nil {
+		logrus.Debugf("[firehose %d] Failed to marshal record: %v\n", output.PluginID, record)
+	}
+
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
+	assert.Len(t, actualData, 1024000, "Expected length is 1024000")
+}
+
 func TestAddRecordAndFlush(t *testing.T) {
 	record := map[interface{}]interface{}{
 		"somekey": []byte("some value"),
