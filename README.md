@@ -28,6 +28,7 @@ Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
 * `sts_endpoint`: Specify a custom endpoint for the STS API; used to assume your custom role provided with `role_arn`.
 * `time_key`: Add the timestamp to the record under this key. By default the timestamp from Fluent Bit will not be added to records sent to Kinesis.
 * `time_key_format`: [strftime](http://man7.org/linux/man-pages/man3/strftime.3.html) compliant format string for the timestamp; for example, `%Y-%m-%dT%H:%M:%S%z`. This option is used with `time_key`. You can also use `%L` for milliseconds and `%f` for microseconds. If you are using ECS FireLens, make sure you are running Amazon ECS Container Agent v1.42.0 or later, otherwise the timestamps associated with your container logs will only have second precision.
+* `replace_dots`: Replace dot characters in key names with the value of this option. For example, if you add `replace_dots _` in your config then all occurrences of `.` will be replaced with an underscore. By default, dots will not be replaced.
 
 ### Permissions
 
@@ -59,6 +60,7 @@ This plugin has been tested with Fluent Bit 1.2.0+. It may not work with older F
     Match  *
     region us-west-2
     delivery_stream my-stream
+    replace_dots _
 ```
 
 ### AWS for Fluent Bit
