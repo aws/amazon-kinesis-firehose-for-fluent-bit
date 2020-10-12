@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2
+* Bug - Truncate record to max size (#58)
+
 ## 1.4.0
 * Feature - Add log_key option for firehose output plugin (#33)
 * Bug - Check for empty batch before sending (#27)
