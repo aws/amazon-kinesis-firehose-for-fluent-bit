@@ -76,12 +76,14 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 	logrus.Infof("[firehose %d] plugin parameter time_key_format = '%s'", pluginID, timeKeyFmt)
 	logKey := output.FLBPluginConfigKey(ctx, "log_key")
 	logrus.Infof("[firehose %d] plugin parameter log_key = '%s'", pluginID, logKey)
+	replaceDots := output.FLBPluginConfigKey(ctx, "replace_dots")
+	logrus.Infof("[firehose %d] plugin parameter replace_dots = '%s'", pluginID, replaceDots)
 
 	if deliveryStream == "" || region == "" {
 		return nil, fmt.Errorf("[firehose %d] delivery_stream and region are required configuration parameters", pluginID)
 	}
 
-	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeKeyFmt, logKey, pluginID)
+	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeKeyFmt, logKey, replaceDots, pluginID)
 }
 
 //export FLBPluginInit

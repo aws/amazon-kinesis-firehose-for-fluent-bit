@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/plugins"
@@ -64,10 +65,11 @@ type OutputPlugin struct {
 	dataLength     int
 	timer          *plugins.Timeout
 	PluginID       int
+	replaceDots    string
 }
 
 // NewOutputPlugin creates an OutputPlugin object
-func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt, logKey string, pluginID int) (*OutputPlugin, error) {
+func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt, logKey, replaceDots string, pluginID int) (*OutputPlugin, error) {
 	client, err := newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint, pluginID)
 	if err != nil {
 		return nil, err
@@ -108,6 +110,7 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint
 		fmtStrftime:    timeFormatter,
 		logKey:         logKey,
 		PluginID:       pluginID,
+		replaceDots:    replaceDots,
 	}, nil
 }
 
@@ -221,6 +224,25 @@ func (output *OutputPlugin) Flush() int {
 	return retCode
 }
 
+func replaceDots(obj map[interface{}]interface{}, replacement string) map[interface{}]interface{} {
+	for k, v := range obj {
+		var curK = k
+		switch kt := k.(type) {
+		case string:
+			curK = strings.ReplaceAll(kt, ".", replacement)
+		}
+		delete(obj, k)
+		switch vt := v.(type) {
+		case map[interface{}]interface{}:
+			v = replaceDots(vt, replacement)
+		}
+
+		obj[curK] = v
+	}
+
+	return obj
+}
+
 func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([]byte, error) {
 	if output.dataKeys != "" {
 		record = plugins.DataKeys(output.dataKeys, record)
@@ -231,6 +253,10 @@ func (output *OutputPlugin) processRecord(record map[interface{}]interface{}) ([
 	if err != nil {
 		logrus.Debugf("[firehose %d] Failed to decode record: %v\n", output.PluginID, record)
 		return nil, err
+	}
+
+	if output.replaceDots != "" {
+		record = replaceDots(record, output.replaceDots)
 	}
 
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary

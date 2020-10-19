@@ -14,6 +14,7 @@
 package firehose
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -142,4 +143,49 @@ func TestSendCurrentBatch(t *testing.T) {
 	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
 	assert.Nil(t, err)
 
+}
+
+func TestDotReplace(t *testing.T) {
+	timer, _ := plugins.NewTimeout(func(d time.Duration) {
+		logrus.Errorf("[firehose] timeout threshold reached: Failed to send logs for %v\n", d)
+		logrus.Error("[firehose] Quitting Fluent Bit")
+		os.Exit(1)
+	})
+	output := OutputPlugin{
+		region:         "us-east-1",
+		deliveryStream: "stream",
+		dataKeys:       "",
+		client:         nil,
+		records:        make([]*firehose.Record, 0, 500),
+		timer:          timer,
+		replaceDots:    "-",
+	}
+
+	record := map[interface{}]interface{}{
+		"message.key": map[interface{}]interface{}{
+			"messagevalue":      []byte("some.message"),
+			"message.value/one": []byte("some message"),
+			"message.value/two": []byte("some message"),
+		},
+		"kubernetes": map[interface{}]interface{}{
+			"app":                    []byte("test app label"),
+			"app.kubernetes.io/name": []byte("test key with dots"),
+		},
+	}
+
+	timeStamp := time.Now()
+	retCode := output.AddRecord(record, &timeStamp)
+	assert.Equal(t, retCode, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
+
+	data := output.records[0].Data
+
+	var log map[string]map[string]interface{}
+	json.Unmarshal(data, &log)
+
+	assert.Equal(t, "test app label", log["kubernetes"]["app"])
+	assert.Equal(t, "test key with dots", log["kubernetes"]["app-kubernetes-io/name"])
+	assert.Equal(t, "some.message", log["message-key"]["messagevalue"])
+	assert.Equal(t, "some message", log["message-key"]["message-value/one"])
+	assert.Equal(t, "some message", log["message-key"]["message-value/two"])
 }
