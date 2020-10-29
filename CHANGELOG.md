@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.0
+* Feature - Add new option replace_dots to replace dots in key names (#46)
+
 ## 1.4.2
 * Bug - Truncate record to max size (#58)
 
