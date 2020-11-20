@@ -90,6 +90,11 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 func FLBPluginInit(ctx unsafe.Pointer) int {
 	plugins.SetupLogger()
 
+	logrus.Info("A new higher performance Firehose plugin has been released; " +
+		"you are using the old plugin. Check out the new plugin's documentation and " +
+		"consider migrating.\n" +
+		"https://docs.fluentbit.io/manual/pipeline/outputs/firehose")
+
 	err := addPluginInstance(ctx)
 	if err != nil {
 		logrus.Errorf("[firehose] Failed to initialize plugin: %v", err)

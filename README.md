@@ -1,6 +1,8 @@
 [![Test Actions Status](https://github.com/aws/amazon-kinesis-firehose-for-fluent-bit/workflows/Build/badge.svg)](https://github.com/aws/amazon-kinesis-firehose-for-fluent-bit/actions)
 ## Fluent Bit Plugin for Amazon Kinesis Firehose
 
+**NOTE: A new higher performance Fluent Bit Firehose Plugin has been released.** Check out our [official guidance](#new-higher-performance-core-fluent-bit-plugin).
+
 A Fluent Bit output plugin for Amazon Kinesis Data Firehose.
 
 #### Security disclosures
@@ -42,6 +44,33 @@ This plugin uses the AWS SDK Go, and uses its [default credential provider chain
 
 * `FLB_LOG_LEVEL`: Set the log level for the plugin. Valid values are: `debug`, `info`, and `error` (case insensitive). Default is `info`. **Note**: Setting log level in the Fluent Bit Configuration file using the Service key will not affect the plugin log level (because the plugin is external).
 * `SEND_FAILURE_TIMEOUT`: Allows you to configure a timeout if the plugin can not send logs to Firehose. The timeout is specified as a [Golang duration](https://golang.org/pkg/time/#ParseDuration), for example: `5m30s`. If the plugin has failed to make any progress for the given period of time, then it will exit and kill Fluent Bit. This is useful in scenarios where you want your logging solution to fail fast if it has been misconfigured (i.e. network or credentials have not been set up to allow it to send to Firehose).
+
+
+### New Higher Performance Core Fluent Bit Plugin
+
+In the summer of 2020, we released a [new higher performance Kinesis Firehose plugin](https://docs.fluentbit.io/manual/pipeline/outputs/firehose) named `kinesis_firehose`.
+
+That plugin has almost all of the features of this older, lower performance and less efficient plugin. Check out its [documentation](https://docs.fluentbit.io/manual/pipeline/outputs/firehose).
+
+#### Do you plan to deprecate this older plugin?
+
+This plugin will continue to be supported. However, we are pausing development on it and will focus on the high performance version instead.
+
+#### Which plugin should I use?
+
+If the features of the higher performance plugin are sufficient for your use cases, please use it. It can achieve higher throughput and will consume less CPU and memory.
+
+At the time of writing, the only feature missing from the high performance version is the `replace_dots` option. As time goes on, the high performance plugin will eventually have new features that this plugin lacks.
+
+#### How can I migrate to the higher performance plugin?
+
+For many users, you can simply replace the plugin name `firehose` with the new name `kinesis_firehose`. At the time of writing, the only feature missing from the high performance version is the `replace_dots` option. Check out its [documentation](https://docs.fluentbit.io/manual/pipeline/outputs/cloudwatch).
+
+#### Do you accept contributions to both plugins?
+
+Yes. The high performance plugin is written in C, and this plugin is written in Golang. We understand that Go is an easier language for amateur contributors to write code in- that is the primary reason we are continuing to maintain this repo.
+
+However, if you can write code in C, please consider contributing new features to the [higher performance plugin](https://github.com/fluent/fluent-bit/tree/master/plugins/out_kinesis_firehose).
 
 ### Fluent Bit Versions
 
