@@ -9,5 +9,5 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/lestrrat-go/strftime v1.0.4
 	github.com/sirupsen/logrus v1.7.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 )
