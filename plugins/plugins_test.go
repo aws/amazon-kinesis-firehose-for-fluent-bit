@@ -66,3 +66,12 @@ func TestDataKeys(t *testing.T) {
 	assert.Equal(t, record["pudding"], "is a dog", "Expected data key to have correct value")
 	assert.Equal(t, record["dumpling"], "is a dog", "Expected data key to have correct value")
 }
+
+func TestGetBoolParam(t *testing.T) {
+    value1 := getBoolParam("true", false)
+    assert.Equal(t, value1, true, "Expected option value is true")
+    value2 := getBoolParam("false", false)
+    assert.Equal(t, value2, false, "Expected option value is false")
+    value3 := getBoolParam("fakeString", false)
+    assert.Equal(t, value3, false, "Expected option value is false")
+}

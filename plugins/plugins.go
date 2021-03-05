@@ -230,3 +230,14 @@ func contains(s []string, e string) bool {
 	}
 	return false
 }
+
+func getBoolParam(param string, defaultVal bool) bool {
+	val := strings.ToLower(param)
+	if val == "true" {
+		return true
+	} else if val == "false" {
+		return false
+	} else {
+		return defaultVal
+	}
+}
