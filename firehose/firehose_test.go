@@ -55,6 +55,36 @@ func TestAddRecord(t *testing.T) {
 	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
 }
 
+func TestAddRecordWithSimpleAggregationEnable(t *testing.T) {
+	timer, _ := plugins.NewTimeout(func(d time.Duration) {
+		logrus.Errorf("[firehose] timeout threshold reached: Failed to send logs for %v\n", d)
+		logrus.Error("[firehose] Quitting Fluent Bit")
+		os.Exit(1)
+	})
+	output := OutputPlugin{
+		region:                     "us-east-1",
+		deliveryStream:             "stream",
+		dataKeys:                   "",
+		client:                     nil,
+		records:                    make([]*firehose.Record, 0, 500),
+		timer:                      timer,
+		simpleAggregation:          true,
+	}
+
+	record := map[interface{}]interface{}{
+		"somekey": []byte("some value"),
+	}
+
+	timeStamp1 := time.Now()
+	retCode1 := output.AddRecord(record, &timeStamp1)
+	timeStamp2 := time.Now()
+	retCode2 := output.AddRecord(record, &timeStamp2)
+
+	assert.Equal(t, retCode1, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+	assert.Equal(t, retCode2, fluentbit.FLB_OK, "Expected return code to be FLB_OK")
+	assert.Len(t, output.records, 1, "Expected output to contain 1 record")
+}
+
 func TestTruncateLargeLogEvent(t *testing.T) {
 	timer, _ := plugins.NewTimeout(func(d time.Duration) {
 		logrus.Errorf("[firehose] timeout threshold reached: Failed to send logs for %v\n", d)

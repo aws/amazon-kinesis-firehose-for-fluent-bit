@@ -54,22 +54,23 @@ type PutRecordBatcher interface {
 
 // OutputPlugin sends log records to firehose
 type OutputPlugin struct {
-	region         string
-	deliveryStream string
-	dataKeys       string
-	timeKey        string
-	fmtStrftime    *strftime.Strftime
-	logKey         string
-	client         PutRecordBatcher
-	records        []*firehose.Record
-	dataLength     int
-	timer          *plugins.Timeout
-	PluginID       int
-	replaceDots    string
+	region                       string
+	deliveryStream               string
+	dataKeys                     string
+	timeKey                      string
+	fmtStrftime                  *strftime.Strftime
+	logKey                       string
+	client                       PutRecordBatcher
+	records                      []*firehose.Record
+	dataLength                   int
+	timer                        *plugins.Timeout
+	PluginID                     int
+	replaceDots                  string
+	simpleAggregation            bool
 }
 
 // NewOutputPlugin creates an OutputPlugin object
-func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt, logKey, replaceDots string, pluginID int) (*OutputPlugin, error) {
+func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeFmt, logKey, replaceDots string, pluginID int, simpleAggregation bool) (*OutputPlugin, error) {
 	client, err := newPutRecordBatcher(roleARN, region, firehoseEndpoint, stsEndpoint, pluginID)
 	if err != nil {
 		return nil, err
@@ -100,17 +101,18 @@ func NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint
 	}
 
 	return &OutputPlugin{
-		region:         region,
-		deliveryStream: deliveryStream,
-		client:         client,
-		records:        records,
-		dataKeys:       dataKeys,
-		timer:          timer,
-		timeKey:        timeKey,
-		fmtStrftime:    timeFormatter,
-		logKey:         logKey,
-		PluginID:       pluginID,
-		replaceDots:    replaceDots,
+		region:                        region,
+		deliveryStream:                deliveryStream,
+		client:                        client,
+		records:                       records,
+		dataKeys:                      dataKeys,
+		timer:                         timer,
+		timeKey:                       timeKey,
+		fmtStrftime:                   timeFormatter,
+		logKey:                        logKey,
+		PluginID:                      pluginID,
+		replaceDots:                   replaceDots,
+		simpleAggregation:             simpleAggregation,
 	}, nil
 }
 
@@ -207,9 +209,13 @@ func (output *OutputPlugin) AddRecord(record map[interface{}]interface{}, timeSt
 		}
 	}
 
-	output.records = append(output.records, &firehose.Record{
-		Data: data,
-	})
+    if output.simpleAggregation && len(output.records) > 0 && len(output.records[len(output.records)-1].Data) + newDataSize <= maximumRecordSize {
+        output.records[len(output.records)-1].Data = append(output.records[len(output.records)-1].Data, data...)
+    } else {
+        output.records = append(output.records, &firehose.Record{
+            Data: data,
+        })
+	}
 	output.dataLength += newDataSize
 	return fluentbit.FLB_OK
 }
