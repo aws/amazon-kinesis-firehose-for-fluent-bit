@@ -16,7 +16,6 @@ package main
 import (
 	"C"
 	"unsafe"
-
 	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/firehose"
 	"github.com/aws/amazon-kinesis-firehose-for-fluent-bit/plugins"
 	"github.com/fluent/fluent-bit-go/output"
@@ -78,12 +77,15 @@ func newFirehoseOutput(ctx unsafe.Pointer, pluginID int) (*firehose.OutputPlugin
 	logrus.Infof("[firehose %d] plugin parameter log_key = '%s'", pluginID, logKey)
 	replaceDots := output.FLBPluginConfigKey(ctx, "replace_dots")
 	logrus.Infof("[firehose %d] plugin parameter replace_dots = '%s'", pluginID, replaceDots)
-
+	simpleAggregation := plugins.GetBoolParam(output.FLBPluginConfigKey(ctx, "simple_aggregation"), false)
+	logrus.Infof("[firehose %d] plugin parameter simple_aggregation = '%v'",
+                  pluginID, simpleAggregation)
 	if deliveryStream == "" || region == "" {
 		return nil, fmt.Errorf("[firehose %d] delivery_stream and region are required configuration parameters", pluginID)
 	}
 
-	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey, timeKeyFmt, logKey, replaceDots, pluginID)
+	return firehose.NewOutputPlugin(region, deliveryStream, dataKeys, roleARN, firehoseEndpoint, stsEndpoint, timeKey,
+	                                timeKeyFmt, logKey, replaceDots, pluginID, simpleAggregation)
 }
 
 //export FLBPluginInit

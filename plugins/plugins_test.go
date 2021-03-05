@@ -68,10 +68,10 @@ func TestDataKeys(t *testing.T) {
 }
 
 func TestGetBoolParam(t *testing.T) {
-    value1 := getBoolParam("true", false)
+    value1 := GetBoolParam("true", false)
     assert.Equal(t, value1, true, "Expected option value is true")
-    value2 := getBoolParam("false", false)
+    value2 := GetBoolParam("false", false)
     assert.Equal(t, value2, false, "Expected option value is false")
-    value3 := getBoolParam("fakeString", false)
+    value3 := GetBoolParam("fakeString", false)
     assert.Equal(t, value3, false, "Expected option value is false")
 }

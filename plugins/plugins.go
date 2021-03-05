@@ -231,7 +231,8 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func getBoolParam(param string, defaultVal bool) bool {
+// GetBoolParam is used for boolean config setup
+func GetBoolParam(param string, defaultVal bool) bool {
 	val := strings.ToLower(param)
 	if val == "true" {
 		return true

@@ -31,7 +31,7 @@ Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
 * `time_key`: Add the timestamp to the record under this key. By default the timestamp from Fluent Bit will not be added to records sent to Kinesis.
 * `time_key_format`: [strftime](http://man7.org/linux/man-pages/man3/strftime.3.html) compliant format string for the timestamp; for example, `%Y-%m-%dT%H:%M:%S%z`. This option is used with `time_key`. You can also use `%L` for milliseconds and `%f` for microseconds. If you are using ECS FireLens, make sure you are running Amazon ECS Container Agent v1.42.0 or later, otherwise the timestamps associated with your container logs will only have second precision.
 * `replace_dots`: Replace dot characters in key names with the value of this option. For example, if you add `replace_dots _` in your config then all occurrences of `.` will be replaced with an underscore. By default, dots will not be replaced.
-
+* `simple_aggregation`: Option to allow plugin send multiple log events in the same record if current record not exceed the maximumRecordSize (1 MiB). It joins together as many log records as possible into a single Firehose record and delimits them with newline. It's good to enable if your destination supports aggregation like S3. Default to be `false`, set to `true` to enable this option.
 ### Permissions
 
 The plugin requires `firehose:PutRecordBatch` permissions.
