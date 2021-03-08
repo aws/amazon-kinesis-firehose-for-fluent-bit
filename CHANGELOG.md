@@ -1,23 +1,26 @@
 # Changelog
 
+## 1.6.0
+* Feature - Add new option `simple_aggregation` to send multiple log events per record (#12)
+
 ## 1.5.0
-* Feature - Add new option replace_dots to replace dots in key names (#46)
+* Feature - Add new option `replace_dots` to replace dots in key names (#46)
 
 ## 1.4.2
 * Bug - Truncate record to max size (#58)
 
 ## 1.4.0
-* Feature - Add log_key option for firehose output plugin (#33)
+* Feature - Add `log_key` option for firehose output plugin (#33)
 * Bug - Check for empty batch before sending (#27)
 
 ## 1.3.0
-* Feature - Add sts_endpoint param for custom STS API endpoint (#31)
+* Feature - Add `sts_endpoint` param for custom STS API endpoint (#31)
 
 ## 1.2.1
 * Bug - Remove exponential backoff code (#23)
 
 ## 1.2.0
-* Feature - Add time_key and time_key_format config options to add timestamp to records (#9)
+* Feature - Add `time_key` and `time_key_format` config options to add timestamp to records (#9)
 
 ## 1.1.0
 * Feature - Support IAM Roles for Service Accounts in Amazon EKS (#17)
