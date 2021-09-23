@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1
+* Enhancement - upgrade Go version to 1.17
+
 ## 1.6.0
 * Feature - Add new option `simple_aggregation` to send multiple log events per record (#12)
 
