@@ -60,7 +60,7 @@ This plugin will continue to be supported. However, we are pausing development o
 
 If the features of the higher performance plugin are sufficient for your use cases, please use it. It can achieve higher throughput and will consume less CPU and memory.
 
-At the time of writing, the only feature missing from the high performance version is the `replace_dots` option. As time goes on, the high performance plugin will eventually have new features that this plugin lacks.
+As time goes on we expect new features to be added to the C plugin only, however, this is determined on a case by case basis. There is a small feature gap between the two plugins. Please consult the [C plugin documentation](https://docs.fluentbit.io/manual/pipeline/outputs/firehose) and this document for the features offered by each plugin. 
 
 #### How can I migrate to the higher performance plugin?
 
