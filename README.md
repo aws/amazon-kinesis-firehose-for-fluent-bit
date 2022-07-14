@@ -16,9 +16,20 @@ Run `make` to build `./bin/firehose.so`. Then use with Fluent Bit:
 ./fluent-bit -e ./firehose.so -i cpu \
 -o firehose \
 -p "region=us-west-2" \
--p "delivery-stream=example-stream"
+-p "delivery_stream=example-stream"
 ```
 
+For building Windows binaries, we need to install `mingw-64w` for cross-compilation. The same can be done using-
+```
+sudo apt-get install -y gcc-multilib gcc-mingw-w64
+```
+After this step, run `make windows-release` to build `./bin/firehose.dll`. Then use with Fluent Bit on Windows:
+```
+./fluent-bit.exe -e ./firehose.dll -i dummy `
+-o firehose `
+-p "region=us-west-2" `
+-p "delivery_stream=example-stream"
+```
 ### Plugin Options
 
 * `region`: The region which your Firehose delivery stream(s) is/are in.

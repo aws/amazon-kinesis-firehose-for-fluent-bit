@@ -11,6 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+# Build settings.
+GOARCH ?= amd64
+COMPILER ?= x86_64-w64-mingw32-gcc # Cross-compiler for Windows
+
 ROOT := $(shell pwd)
 
 all: build
@@ -33,6 +37,12 @@ release:
 	mkdir -p ./bin
 	go build -buildmode c-shared -o ./bin/firehose.so ./
 	@echo "Built Amazon Kinesis Data Firehose Fluent Bit Plugin"
+
+.PHONY: windows-release
+windows-release:
+	mkdir -p ./bin
+	GOOS=windows GOARCH=$(GOARCH) CGO_ENABLED=1 CC=$(COMPILER) go build -buildmode c-shared -o ./bin/firehose.dll ./
+	@echo "Built Amazon Kinesis Data Firehose Fluent Bit Plugin for Windows"
 
 .PHONY: generate
 generate: $(SOURCES)
