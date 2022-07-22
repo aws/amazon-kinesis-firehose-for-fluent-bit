@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0
+* Feature - Add support for building this plugin on Windows. *Note that this is only support in this plugin repo for Windows compilation.*
+
 ## 1.6.1
 * Enhancement - upgrade Go version to 1.17
 
