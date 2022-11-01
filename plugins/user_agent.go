@@ -20,16 +20,27 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 )
 
-const userAgentHeader = "User-Agent"
+const (
+	userAgentHeader = "User-Agent"
+	// linuxBaseUserAgent is the base user agent string used for Linux.
+	linuxBaseUserAgent = "aws-fluent-bit-plugin"
+	// windowsBaseUserAgent is the base user agent string used for Windows.
+	windowsBaseUserAgent = "aws-fluent-bit-plugin-windows"
+)
 
 // CustomUserAgentHandler returns a http request handler that sets a custom user agent to all aws requests
 func CustomUserAgentHandler() request.NamedHandler {
+	baseUserAgent := linuxBaseUserAgent
+	if runtime.GOOS == "windows" {
+		baseUserAgent = windowsBaseUserAgent
+	}
+
 	return request.NamedHandler{
 		Name: "ECSLocalEndpointsAgentHandler",
 		Fn: func(r *request.Request) {
 			currentAgent := r.HTTPRequest.Header.Get(userAgentHeader)
 			r.HTTPRequest.Header.Set(userAgentHeader,
-				fmt.Sprintf("aws-fluent-bit-plugin (%s) %s", runtime.GOOS, currentAgent))
+				fmt.Sprintf("%s (%s) %s", baseUserAgent, runtime.GOOS, currentAgent))
 		},
 	}
 }
