@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.2
+* Enhancement - upgrade Go version to 1.20
+
 ## 1.7.1
 * Enhancement - Added different base user agent for Linux and Windows
 
