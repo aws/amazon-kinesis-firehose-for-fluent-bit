@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.3
+* Enhancement - Update github.com/aws/aws-sdk-go to v1.55.8
+* Enhancement - Update github.com/lestrrat-go/strftime to v1.1.1
+* Enhancement - Update github.com/sirupsen/logrus to v1.9.4
+* Enhancement - Update github.com/stretchr/testify to v1.11.1
+
 ## 1.7.2
 * Enhancement - upgrade Go version to 1.20
 
